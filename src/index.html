@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sidecar DMS</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="frame">
+    <div class="topbar">
+      <span class="topbar-logo">Sidecar DMS</span>
+      <input class="search" type="text" placeholder="Search documents..." id="search-input">
+      <div class="topbar-nav">
+        <span class="topbar-btn act" data-view="documents">Documents</span>
+        <span class="topbar-btn" data-view="recent">Recent</span>
+      </div>
+    </div>
+
+    <div class="layout">
+      <!-- Left Sidebar -->
+      <div class="sidebar" id="sidebar-left">
+        <div class="sb-mode">
+          <div class="sb-mode-btn act" data-mode="folders">Folders</div>
+          <div class="sb-mode-btn" data-mode="tags">Tags</div>
+        </div>
+        <div id="sidebar-tree"></div>
+      </div>
+
+      <!-- Center Content -->
+      <div class="center">
+        <div class="tabs">
+          <span class="tab act" data-tab="pdf">PDF</span>
+          <span class="tab" data-tab="ocr">OCR Markdown</span>
+        </div>
+        <div class="content" id="content-area">
+          <div class="empty-state" id="empty-state">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+              <path d="M6 2h9l5 5v13a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z"/>
+              <path d="M14 2v6h6"/><path d="M8 14h8M8 18h5"/>
+            </svg>
+            <div>Select a document from the sidebar</div>
+          </div>
+          <div id="pdf-container" class="tab-content" style="display:none;"></div>
+          <div id="ocr-container" class="tab-content" style="display:none;"></div>
+        </div>
+      </div>
+
+      <!-- Right Sidebar -->
+      <div class="sidebar sidebar-r" id="sidebar-right">
+        <div id="meta-panel">
+          <div class="meta-empty">No document selected</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
