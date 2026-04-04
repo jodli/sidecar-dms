@@ -12,8 +12,9 @@ import requests
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 OCR_ENGINE = os.environ.get("OCR_ENGINE", "cloudflare-ai")
-# Free multimodal model — its response is irrelevant, we only want the OCR annotations
-MODEL = os.environ.get("OCR_MODEL", "nvidia/nemotron-nano-12b-v2-vl:free")
+# Cheap Mistral model — its response is irrelevant, we only want the OCR annotations.
+# Using Mistral-hosted model so OCR text stays with the same provider (no third-party training).
+MODEL = os.environ.get("OCR_MODEL", "mistralai/mistral-small-3.1-24b-instruct")
 
 
 def ocr_pdf(pdf_path: Path) -> str:
