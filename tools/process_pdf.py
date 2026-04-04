@@ -23,6 +23,7 @@ ARCHIVE_DIR = DATA_DIR / "archive"
 
 from ocr import ocr_pdf  # noqa: E402
 import build_manifest  # noqa: E402
+import build_search_index  # noqa: E402
 
 
 def process(pdf_path: Path) -> Path:
@@ -72,9 +73,11 @@ def process(pdf_path: Path) -> Path:
     shutil.move(str(pdf_path), str(pdf_dst))
     print(f"  PDF  {pdf_dst.relative_to(DATA_DIR)}")
 
-    # Rebuild manifest
+    # Rebuild manifest + search index
     print("  Rebuilding manifests...")
     build_manifest.main()
+    print("  Rebuilding search index...")
+    build_search_index.main()
 
     return pdf_dst
 
