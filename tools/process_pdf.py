@@ -31,11 +31,15 @@ def process(pdf_path: Path) -> Path:
     """Process a single PDF and return the archive path."""
     name = pdf_path.stem
     now = datetime.now(timezone.utc)
-    year = str(now.year)
 
     # OCR + classify in one request
     print(f"  OCR + classify  {pdf_path.name} ...")
     ocr_text, meta = ocr_pdf(pdf_path)
+
+    # Year from document date, not processing date
+    year = str(meta.get("date", ""))[:4]
+    if not year.isdigit():
+        year = str(now.year)
 
     # Determine category from document_type
     category = category_for(meta["document_type"])
