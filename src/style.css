@@ -335,19 +335,26 @@ body {
 /* Divider */
 .dv { border-top: 1px solid var(--color-border-tertiary); margin: 10px 0; }
 
-/* Field rows */
-.field-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
+/* Fields table */
+.fields-table {
+  width: 100%;
+  border-collapse: collapse;
   font-size: 12px;
-  padding: 2px 0;
+  margin-top: 4px;
 }
-.field-key { color: var(--color-text-tertiary); }
-.field-val {
+.fields-table td {
+  padding: 3px 6px;
+  border: 1px solid var(--color-border-tertiary);
+}
+.fields-table-key {
+  color: var(--color-text-tertiary);
+  white-space: nowrap;
+  width: 1%;
+}
+.fields-table-val {
   color: var(--color-text-primary);
   font-family: var(--font-mono);
-  font-size: 12px;
+  word-break: break-word;
 }
 
 /* File and processing rows */

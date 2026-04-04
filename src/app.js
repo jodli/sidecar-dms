@@ -187,7 +187,7 @@ async function selectDocument(path) {
     renderMetadataPanel(meta, path);
   } catch (err) {
     document.getElementById('meta-panel').innerHTML =
-      `<div class="meta-empty">Failed to load metadata</div>`;
+      `<div class="meta-empty">Metadaten konnten nicht geladen werden</div>`;
   }
 
   // Show content for current tab
@@ -205,10 +205,13 @@ function renderMetadataPanel(meta, path) {
     `<span class="tag ${TAG_COLORS[i % TAG_COLORS.length]}">${esc(tag)}</span>`
   ).join('');
 
-  const fieldsHTML = meta.fields
-    ? Object.entries(meta.fields).map(([k, v]) =>
-        `<div class="field-row"><span class="field-key">${esc(k)}</span><span class="field-val">${esc(String(v))}</span></div>`
-      ).join('')
+  const fieldEntries = meta.fields ? Object.entries(meta.fields) : [];
+  const fieldsHTML = fieldEntries.length > 0
+    ? `<table class="fields-table">
+        <tbody>${fieldEntries.map(([k, v]) =>
+          `<tr><td class="fields-table-key">${esc(k)}</td><td class="fields-table-val">${esc(String(v))}</td></tr>`
+        ).join('')}</tbody>
+      </table>`
     : '';
 
   const proc = meta.processing || {};
@@ -217,32 +220,32 @@ function renderMetadataPanel(meta, path) {
   const textLayerDot = proc.text_layer_embedded ? 'dot-g' : 'dot-o';
 
   panel.innerHTML = `
-    <div class="ml">Title</div>
+    <div class="ml">Titel</div>
     <div class="mv meta-title">${esc(meta.title || '')}</div>
 
-    <div class="ml">Date</div>
+    <div class="ml">Datum</div>
     <div class="mv m">${esc(String(meta.date || ''))}</div>
 
-    <div class="ml">Type</div>
+    <div class="ml">Typ</div>
     <div><span class="tag ${TYPE_COLOR}">${esc(meta.document_type || '')}</span></div>
 
-    <div class="ml">Sender</div>
+    <div class="ml">Absender</div>
     <div class="mv">${esc(meta.sender || '—')}</div>
 
     <div class="ml">Tags</div>
     <div style="margin-top:2px;">${tagHTML || '<span style="color:var(--color-text-tertiary)">—</span>'}</div>
 
-    <div class="ml">Summary</div>
+    <div class="ml">Zusammenfassung</div>
     <div class="meta-summary">${esc(meta.summary || '')}</div>
 
     <div class="dv"></div>
 
-    <div class="ml">Document fields</div>
+    <div class="ml">Felder</div>
     ${fieldsHTML || '<div style="font-size:12px;color:var(--color-text-tertiary)">—</div>'}
 
     <div class="dv"></div>
 
-    <div class="ml">Files</div>
+    <div class="ml">Dateien</div>
     <div style="display:flex;flex-direction:column;gap:2px;margin-top:2px;">
       <div class="frow"><span class="dot dot-g"></span> ${esc(baseName)}.pdf</div>
       <div class="frow"><span class="dot dot-g"></span> ${esc(baseName)}.md</div>
@@ -251,11 +254,11 @@ function renderMetadataPanel(meta, path) {
 
     <div class="dv"></div>
 
-    <div class="ml">Processing</div>
+    <div class="ml">Verarbeitung</div>
     <div style="display:flex;flex-direction:column;gap:2px;margin-top:2px;">
-      <div class="frow"><span class="dot ${ocrDot}"></span> ${esc(proc.ocr_engine || 'unknown')}</div>
-      <div class="frow"><span class="dot ${classifierDot}"></span> ${esc(proc.classifier || 'unknown')}</div>
-      <div class="frow"><span class="dot ${textLayerDot}"></span> ${proc.text_layer_embedded ? 'Text layer embedded' : 'No text layer in PDF'}</div>
+      <div class="frow"><span class="dot ${ocrDot}"></span> ${esc(proc.ocr_engine || 'unbekannt')}</div>
+      <div class="frow"><span class="dot ${classifierDot}"></span> ${esc(proc.classifier || 'unbekannt')}</div>
+      <div class="frow"><span class="dot ${textLayerDot}"></span> ${proc.text_layer_embedded ? 'Textebene eingebettet' : 'Keine Textebene im PDF'}</div>
     </div>
   `;
 }
@@ -290,7 +293,7 @@ function showTab(tab) {
 async function showPDF(path) {
   const container = document.getElementById('pdf-container');
   container.style.display = 'flex';
-  container.innerHTML = '<div class="pdf-loading">Loading PDF...</div>';
+  container.innerHTML = '<div class="pdf-loading">PDF wird geladen...</div>';
 
   if (!pdfJsLoaded) {
     await loadPdfJs();
@@ -317,21 +320,21 @@ async function showPDF(path) {
       }).promise;
     }
   } catch (err) {
-    container.innerHTML = `<div class="pdf-loading">Failed to load PDF: ${esc(err.message)}</div>`;
+    container.innerHTML = `<div class="pdf-loading">PDF konnte nicht geladen werden: ${esc(err.message)}</div>`;
   }
 }
 
 async function showOCR(path) {
   const container = document.getElementById('ocr-container');
   container.style.display = 'block';
-  container.innerHTML = '<div class="pdf-loading">Loading...</div>';
+  container.innerHTML = '<div class="pdf-loading">Wird geladen...</div>';
 
   try {
     const resp = await fetch(`archive/${path}.md`);
     const md = await resp.text();
     container.innerHTML = marked.parse(md);
   } catch (err) {
-    container.innerHTML = `<div class="pdf-loading">Failed to load OCR text</div>`;
+    container.innerHTML = `<div class="pdf-loading">OCR-Text konnte nicht geladen werden</div>`;
   }
 }
 
@@ -460,7 +463,7 @@ function setupEventListeners() {
         await pagefind.options({ bundlePath: '/pagefind/' });
       } catch (err) {
         console.warn('Pagefind not available:', err);
-        showSearchResults('<div class="search-no-results">Search index not available</div>');
+        showSearchResults('<div class="search-no-results">Suchindex nicht verfügbar</div>');
         return;
       }
     }
@@ -474,7 +477,7 @@ function setupEventListeners() {
       );
 
       if (data.length === 0) {
-        showSearchResults('<div class="search-no-results">No results</div>');
+        showSearchResults('<div class="search-no-results">Keine Ergebnisse</div>');
         return;
       }
 
@@ -486,7 +489,7 @@ function setupEventListeners() {
       `).join(''));
     } catch (err) {
       console.error('Search error:', err);
-      showSearchResults('<div class="search-no-results">Search error</div>');
+      showSearchResults('<div class="search-no-results">Suchfehler</div>');
     }
   });
 

@@ -11,12 +11,12 @@
     <div class="topbar">
       <span class="topbar-logo">Sidecar DMS</span>
       <div class="search-wrap">
-        <input class="search" type="text" placeholder="Search documents..." id="search-input">
+        <input class="search" type="text" placeholder="Dokumente durchsuchen..." id="search-input">
         <button class="search-clear" id="search-clear" style="display:none;">&times;</button>
       </div>
       <div class="topbar-nav">
-        <span class="topbar-btn act" data-view="documents">Documents</span>
-        <span class="topbar-btn" data-view="recent">Recent</span>
+        <span class="topbar-btn act" data-view="documents">Dokumente</span>
+        <span class="topbar-btn" data-view="recent">Zuletzt</span>
       </div>
     </div>
 
@@ -24,7 +24,7 @@
       <!-- Left Sidebar -->
       <div class="sidebar" id="sidebar-left">
         <div class="sb-mode">
-          <div class="sb-mode-btn act" data-mode="folders">Folders</div>
+          <div class="sb-mode-btn act" data-mode="folders">Ordner</div>
           <div class="sb-mode-btn" data-mode="tags">Tags</div>
         </div>
         <div id="search-results" style="display:none;"></div>
@@ -35,7 +35,7 @@
       <div class="center">
         <div class="tabs">
           <span class="tab act" data-tab="pdf">PDF</span>
-          <span class="tab" data-tab="ocr">OCR Markdown</span>
+          <span class="tab" data-tab="ocr">OCR-Text</span>
         </div>
         <div class="content" id="content-area">
           <div class="empty-state" id="empty-state">
@@ -43,7 +43,7 @@
               <path d="M6 2h9l5 5v13a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z"/>
               <path d="M14 2v6h6"/><path d="M8 14h8M8 18h5"/>
             </svg>
-            <div>Select a document from the sidebar</div>
+            <div>Dokument in der Seitenleiste auswählen</div>
           </div>
           <div id="pdf-container" class="tab-content" style="display:none;"></div>
           <div id="ocr-container" class="tab-content" style="display:none;"></div>
@@ -53,7 +53,7 @@
       <!-- Right Sidebar -->
       <div class="sidebar sidebar-r" id="sidebar-right">
         <div id="meta-panel">
-          <div class="meta-empty">No document selected</div>
+          <div class="meta-empty">Kein Dokument ausgewählt</div>
         </div>
       </div>
     </div>
