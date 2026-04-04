@@ -5,6 +5,7 @@ import os
 from functools import partial
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
+from urllib.parse import unquote
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SRC_DIR = REPO_ROOT / "src"
@@ -14,8 +15,9 @@ PORT = int(os.environ.get("PORT", "8000"))
 
 class DevHandler(SimpleHTTPRequestHandler):
     def translate_path(self, path: str) -> str:
-        # Strip query string and fragment
+        # Strip query string and fragment, decode percent-encoding
         path = path.split("?", 1)[0].split("#", 1)[0]
+        path = unquote(path)
 
         # Data routes: archive/, manifest-*.json, pagefind/
         if path.startswith("/archive/") or path.startswith("/pagefind/") or (path.startswith("/manifest-") and path.endswith(".json")):
