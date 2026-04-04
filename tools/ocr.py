@@ -46,6 +46,7 @@ def ocr_pdf(pdf_path: Path) -> tuple[str, dict]:
                 ],
             },
         ],
+        "max_tokens": 2048,
         "plugins": [
             {
                 "id": "file-parser",
