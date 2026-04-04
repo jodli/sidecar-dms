@@ -21,7 +21,7 @@ if _env_file.exists():
 DATA_DIR = Path(os.environ.get("SIDECAR_DATA_DIR", REPO_ROOT.parent / "sidecar-data"))
 ARCHIVE_DIR = DATA_DIR / "archive"
 
-from ocr import ocr_pdf  # noqa: E402
+from ocr import OCR_ENGINE, ocr_pdf  # noqa: E402
 from classify import CLASSIFY_MODEL, category_for  # noqa: E402
 import build_manifest  # noqa: E402
 import build_search_index  # noqa: E402
@@ -55,7 +55,7 @@ def process(pdf_path: Path) -> Path:
 
     # Add processing metadata
     meta["processing"] = {
-        "ocr_engine": os.environ.get("OCR_ENGINE", "cloudflare-ai"),
+        "ocr_engine": OCR_ENGINE,
         "classifier": CLASSIFY_MODEL,
         "processed_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "text_layer_embedded": False,

@@ -21,6 +21,8 @@ POLL_INTERVAL = 2  # seconds
 SETTLE_TIME = 1    # seconds — wait for file to finish writing
 
 from process_pdf import process  # noqa: E402
+import build_manifest  # noqa: E402
+import build_search_index  # noqa: E402
 
 
 def watch():
@@ -61,4 +63,10 @@ def watch():
 
 
 if __name__ == "__main__":
+    # Rebuild manifest + search index
+    print("  Rebuilding manifests...")
+    build_manifest.main()
+    print("  Rebuilding search index...")
+    build_search_index.main()
+
     watch()

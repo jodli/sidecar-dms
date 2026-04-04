@@ -13,7 +13,7 @@ from classify import CLASSIFY_MODEL, SYSTEM_PROMPT, parse_llm_response, validate
 
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-OCR_ENGINE = os.environ.get("OCR_ENGINE", "cloudflare-ai")
+OCR_ENGINE = os.environ.get("OCR_ENGINE", "mistral-ocr")
 
 
 def ocr_pdf(pdf_path: Path) -> tuple[str, dict]:

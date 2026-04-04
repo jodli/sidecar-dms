@@ -42,15 +42,13 @@ Source code lives in the git repo. Data (PDFs, archive, manifests, search index)
 ### Process a single PDF
 
 ```bash
-SIDECAR_DATA_DIR=/path/to/sidecar-data OCR_ENGINE=mistral-ocr \
-  uv run python tools/process_pdf.py /path/to/document.pdf
+SIDECAR_DATA_DIR=/path/to/sidecar-data uv run python tools/process_pdf.py /path/to/document.pdf
 ```
 
 ### Watch intake folder
 
 ```bash
-SIDECAR_DATA_DIR=/path/to/sidecar-data OCR_ENGINE=mistral-ocr \
-  uv run python tools/watch_intake.py
+SIDECAR_DATA_DIR=/path/to/sidecar-data uv run python tools/watch_intake.py
 ```
 
 Drop PDFs into `$SIDECAR_DATA_DIR/intake/`. They get processed automatically.
@@ -79,7 +77,7 @@ This happens automatically after `process_pdf.py`, but you can run it manually a
 |---|---|---|
 | `SIDECAR_DATA_DIR` | Where the archive, manifests, and search index live | `../sidecar-data` |
 | `OPENROUTER_API_KEY` | OpenRouter API key (or put it in `.env`) | required |
-| `OCR_ENGINE` | `mistral-ocr` ($2/1k pages) or `cloudflare-ai` (free, worse) | `cloudflare-ai` |
+| `OCR_ENGINE` | LLM for optical character recognition | `mistral-ocr` |
 | `CLASSIFY_MODEL` | LLM for classification | `google/gemma-4-31b-it` |
 | `PORT` | Dev server port | `8000` |
 

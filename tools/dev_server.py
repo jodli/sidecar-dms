@@ -9,7 +9,7 @@ from urllib.parse import unquote
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SRC_DIR = REPO_ROOT / "src"
-DATA_DIR = Path(os.environ.get("SIDECAR_DATA_DIR", REPO_ROOT.parent.parent / "sidecar-data"))
+DATA_DIR = Path(os.environ.get("SIDECAR_DATA_DIR", REPO_ROOT.parent / "sidecar-data"))
 PORT = int(os.environ.get("PORT", "8000"))
 
 
