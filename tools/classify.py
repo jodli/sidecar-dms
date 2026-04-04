@@ -20,7 +20,7 @@ Schema:
   "tags": ["relevante", "deutsche", "schlagwörter"],
   "sender": "Absender oder Aussteller des Dokuments",
   "summary": "1-2 Sätze Zusammenfassung auf Deutsch",
-  "fields": { "dokumenttyp-spezifische Schlüssel-Wert-Paare, z.B. amount, currency, policy_number, registry_number" }
+  "fields": { "dokumenttyp-spezifische Schlüssel-Wert-Paare auf Deutsch, z.B. betrag, währung, vertragsnummer, aktenzeichen, kundennummer" }
 }"""
 
 CATEGORY_MAP = {
