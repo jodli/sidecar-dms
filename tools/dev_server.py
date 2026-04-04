@@ -8,7 +8,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SRC_DIR = REPO_ROOT / "src"
-DATA_DIR = Path(os.environ.get("SIDECAR_DATA_DIR", REPO_ROOT.parent / "sidecar-data"))
+DATA_DIR = Path(os.environ.get("SIDECAR_DATA_DIR", REPO_ROOT.parent.parent / "sidecar-data"))
 PORT = int(os.environ.get("PORT", "8000"))
 
 
@@ -17,8 +17,8 @@ class DevHandler(SimpleHTTPRequestHandler):
         # Strip query string and fragment
         path = path.split("?", 1)[0].split("#", 1)[0]
 
-        # Data routes: archive/ and manifest-*.json
-        if path.startswith("/archive/") or (path.startswith("/manifest-") and path.endswith(".json")):
+        # Data routes: archive/, manifest-*.json, pagefind/
+        if path.startswith("/archive/") or path.startswith("/pagefind/") or (path.startswith("/manifest-") and path.endswith(".json")):
             return str(DATA_DIR / path.lstrip("/"))
 
         # SPA routes: everything else served from src/
