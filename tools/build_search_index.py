@@ -40,6 +40,7 @@ async def build():
             # Combine OCR text with metadata so all fields are searchable
             meta_text = " ".join(filter(None, [
                 meta.get("title", ""),
+                meta.get("document_type", ""),
                 meta.get("sender", ""),
                 meta.get("summary", ""),
                 " ".join(meta.get("tags", [])),
