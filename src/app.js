@@ -406,12 +406,15 @@ function setupEventListeners() {
   // Sidebar mode toggle
   document.querySelector('.sb-mode').addEventListener('click', (e) => {
     const btn = e.target.closest('.sb-mode-btn');
-    if (btn && btn.dataset.mode !== sidebarMode) {
-      sidebarMode = btn.dataset.mode;
-      document.querySelectorAll('.sb-mode-btn').forEach(b =>
-        b.classList.toggle('act', b.dataset.mode === sidebarMode)
-      );
-      buildSidebarTree();
+    if (btn) {
+      clearSearch();
+      if (btn.dataset.mode !== sidebarMode) {
+        sidebarMode = btn.dataset.mode;
+        document.querySelectorAll('.sb-mode-btn').forEach(b =>
+          b.classList.toggle('act', b.dataset.mode === sidebarMode)
+        );
+        buildSidebarTree();
+      }
     }
   });
 
