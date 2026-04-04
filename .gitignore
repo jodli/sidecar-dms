@@ -3,6 +3,9 @@
 /md/
 *.pdf
 
+# Secrets
+.env
+
 # Editor
 .vscode/
 *.swp
