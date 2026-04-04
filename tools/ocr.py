@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""OCR via OpenRouter file-parser plugin (cloudflare-ai or mistral-ocr engine)."""
+"""OCR + classification via OpenRouter: mistral-ocr plugin + LLM in one request."""
 
 import base64
 import json
@@ -9,16 +9,19 @@ from pathlib import Path
 
 import requests
 
+from classify import CLASSIFY_MODEL, SYSTEM_PROMPT, parse_llm_response, validate_metadata, stub_metadata
+
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 OCR_ENGINE = os.environ.get("OCR_ENGINE", "cloudflare-ai")
-# Cheap Mistral model — its response is irrelevant, we only want the OCR annotations.
-# Using Mistral-hosted model so OCR text stays with the same provider (no third-party training).
-MODEL = os.environ.get("OCR_MODEL", "mistralai/mistral-small-3.1-24b-instruct")
 
 
-def ocr_pdf(pdf_path: Path) -> str:
-    """Send PDF to OpenRouter with file-parser plugin, return extracted text."""
+def ocr_pdf(pdf_path: Path) -> tuple[str, dict]:
+    """Send PDF to OpenRouter with mistral-ocr plugin + classification model.
+
+    Returns (ocr_text, metadata_dict).
+    OCR text comes from annotations, metadata from the model response.
+    """
     if not OPENROUTER_API_KEY:
         raise RuntimeError("OPENROUTER_API_KEY not set")
 
@@ -26,12 +29,13 @@ def ocr_pdf(pdf_path: Path) -> str:
     data_url = f"data:application/pdf;base64,{b64}"
 
     payload = {
-        "model": MODEL,
+        "model": CLASSIFY_MODEL,
         "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "Return the document text."},
+                    {"type": "text", "text": "Klassifiziere dieses Dokument."},
                     {
                         "type": "file",
                         "file": {
@@ -40,7 +44,7 @@ def ocr_pdf(pdf_path: Path) -> str:
                         },
                     },
                 ],
-            }
+            },
         ],
         "plugins": [
             {
@@ -57,18 +61,37 @@ def ocr_pdf(pdf_path: Path) -> str:
             "Content-Type": "application/json",
         },
         json=payload,
-        timeout=120,
+        timeout=180,
     )
     resp.raise_for_status()
     data = resp.json()
 
-    # Extract OCR text from annotations
-    annotations = (
-        data.get("choices", [{}])[0]
-        .get("message", {})
-        .get("annotations", [])
-    )
+    message = data.get("choices", [{}])[0].get("message", {})
 
+    # Extract OCR text from annotations
+    ocr_text = _extract_ocr_text(message.get("annotations", []))
+
+    # Extract classification from model response
+    model_content = message.get("content", "")
+    raw = parse_llm_response(model_content)
+    if raw:
+        metadata = validate_metadata(raw)
+    else:
+        print(f"  WARN  Classification failed, using stub. Response: {model_content[:200]}")
+        metadata = stub_metadata(pdf_path.stem)
+
+    if not ocr_text:
+        # Fallback: use model content as OCR text if no annotations
+        if model_content:
+            ocr_text = model_content
+        else:
+            raise RuntimeError(f"No OCR text in response: {json.dumps(data, indent=2)[:500]}")
+
+    return ocr_text, metadata
+
+
+def _extract_ocr_text(annotations: list) -> str:
+    """Extract text from OpenRouter file annotations."""
     text_parts = []
     for ann in annotations:
         if ann.get("type") == "file":
@@ -81,16 +104,7 @@ def ocr_pdf(pdf_path: Path) -> str:
                     text = text.strip()
                     if text:
                         text_parts.append(text)
-
-    if text_parts:
-        return "\n\n".join(text_parts)
-
-    # Fallback: use the model's response content (some engines inline the text)
-    content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-    if content:
-        return content
-
-    raise RuntimeError(f"No OCR text in response: {json.dumps(data, indent=2)[:500]}")
+    return "\n\n".join(text_parts)
 
 
 if __name__ == "__main__":
@@ -114,5 +128,8 @@ if __name__ == "__main__":
                 os.environ.setdefault(k.strip(), v.strip())
         globals()["OPENROUTER_API_KEY"] = os.environ.get("OPENROUTER_API_KEY", "")
 
-    text = ocr_pdf(path)
-    print(text)
+    ocr_text, metadata = ocr_pdf(path)
+    print("=== OCR TEXT ===")
+    print(ocr_text[:500])
+    print(f"\n=== METADATA ===")
+    print(json.dumps(metadata, ensure_ascii=False, indent=2))
