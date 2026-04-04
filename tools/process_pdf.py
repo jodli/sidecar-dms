@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Process a single PDF: OCR → sidecars → archive → rebuild manifest."""
+"""Process a single PDF: OCR + classify → sidecars → archive → rebuild."""
 
 import os
 import shutil
@@ -22,6 +22,7 @@ DATA_DIR = Path(os.environ.get("SIDECAR_DATA_DIR", REPO_ROOT.parent / "sidecar-d
 ARCHIVE_DIR = DATA_DIR / "archive"
 
 from ocr import ocr_pdf  # noqa: E402
+from classify import CLASSIFY_MODEL, category_for  # noqa: E402
 import build_manifest  # noqa: E402
 import build_search_index  # noqa: E402
 
@@ -32,35 +33,31 @@ def process(pdf_path: Path) -> Path:
     now = datetime.now(timezone.utc)
     year = str(now.year)
 
-    # Target directory
-    target_dir = ARCHIVE_DIR / year / "Unsortiert"
+    # OCR + classify in one request
+    print(f"  OCR + classify  {pdf_path.name} ...")
+    ocr_text, meta = ocr_pdf(pdf_path)
+
+    # Determine category from document_type
+    category = category_for(meta["document_type"])
+    target_dir = ARCHIVE_DIR / year / category
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    # OCR
-    print(f"  OCR  {pdf_path.name} ...")
-    text = ocr_pdf(pdf_path)
+    print(f"  TYPE {meta['document_type']} → {category}")
 
     # Write .md
     md_path = target_dir / f"{name}.md"
-    md_path.write_text(text, encoding="utf-8")
+    md_path.write_text(ocr_text, encoding="utf-8")
     print(f"  MD   {md_path.relative_to(DATA_DIR)}")
 
-    # Write .meta.yml stub
-    meta = {
-        "title": name,
-        "date": now.strftime("%Y-%m-%d"),
-        "document_type": "unclassified",
-        "tags": [],
-        "sender": "",
-        "summary": "",
-        "fields": {},
-        "processing": {
-            "ocr_engine": os.environ.get("OCR_ENGINE", "cloudflare-ai"),
-            "classifier": "none",
-            "processed_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "text_layer_embedded": False,
-        },
+    # Add processing metadata
+    meta["processing"] = {
+        "ocr_engine": os.environ.get("OCR_ENGINE", "cloudflare-ai"),
+        "classifier": CLASSIFY_MODEL,
+        "processed_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "text_layer_embedded": False,
     }
+
+    # Write .meta.yml
     meta_path = target_dir / f"{name}.meta.yml"
     meta_path.write_text(
         yaml.dump(meta, default_flow_style=False, allow_unicode=True, sort_keys=False),
