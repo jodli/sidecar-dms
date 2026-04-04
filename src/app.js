@@ -8,6 +8,7 @@ let currentDoc = null;    // currently selected document path
 let currentTab = 'pdf';   // 'pdf' or 'ocr'
 let sidebarMode = 'folders';
 let pdfJsLoaded = false;
+let pagefind = null;
 
 // ── Init ──
 
@@ -414,13 +415,84 @@ function setupEventListeners() {
     }
   });
 
-  // Search (basic client-side filter)
-  document.getElementById('search-input').addEventListener('input', (e) => {
-    const query = e.target.value.toLowerCase().trim();
-    document.querySelectorAll('.tree-item').forEach(item => {
-      const title = item.textContent.toLowerCase();
-      item.style.display = !query || title.includes(query) ? '' : 'none';
-    });
+  // Search via Pagefind (full-text)
+  const searchInput = document.getElementById('search-input');
+  const searchResults = document.getElementById('search-results');
+  const sidebarTree = document.getElementById('sidebar-tree');
+
+  function showSearchResults(html) {
+    sidebarTree.style.display = 'none';
+    searchResults.style.display = '';
+    searchResults.innerHTML = html;
+  }
+
+  function hideSearchResults() {
+    searchResults.style.display = 'none';
+    searchResults.innerHTML = '';
+    sidebarTree.style.display = '';
+  }
+
+  const searchClear = document.getElementById('search-clear');
+
+  function clearSearch() {
+    searchInput.value = '';
+    searchClear.style.display = 'none';
+    hideSearchResults();
+  }
+
+  searchClear.addEventListener('click', clearSearch);
+
+  searchInput.addEventListener('input', async (e) => {
+    const query = e.target.value.trim();
+    searchClear.style.display = query ? '' : 'none';
+
+    if (!query) {
+      hideSearchResults();
+      return;
+    }
+
+    if (!pagefind) {
+      try {
+        pagefind = await import('/pagefind/pagefind.js');
+        await pagefind.options({ bundlePath: '/pagefind/' });
+      } catch (err) {
+        console.warn('Pagefind not available:', err);
+        showSearchResults('<div class="search-no-results">Search index not available</div>');
+        return;
+      }
+    }
+
+    try {
+      const search = await pagefind.debouncedSearch(query, {}, 200);
+      if (!search) return; // superseded by newer keystroke
+
+      const data = await Promise.all(
+        search.results.slice(0, 20).map(r => r.data())
+      );
+
+      if (data.length === 0) {
+        showSearchResults('<div class="search-no-results">No results</div>');
+        return;
+      }
+
+      showSearchResults(data.map(r => `
+        <div class="search-result" data-path="${esc(r.url)}">
+          <div class="search-result-title">${esc(r.meta?.title || r.url)}</div>
+          <div class="search-result-excerpt">${r.excerpt || ''}</div>
+        </div>
+      `).join(''));
+    } catch (err) {
+      console.error('Search error:', err);
+      showSearchResults('<div class="search-no-results">Search error</div>');
+    }
+  });
+
+  searchResults.addEventListener('click', (e) => {
+    const result = e.target.closest('.search-result');
+    if (result) {
+      selectDocument(result.dataset.path);
+      clearSearch();
+    }
   });
 }
 

@@ -10,7 +10,10 @@
   <div class="frame">
     <div class="topbar">
       <span class="topbar-logo">Sidecar DMS</span>
-      <input class="search" type="text" placeholder="Search documents..." id="search-input">
+      <div class="search-wrap">
+        <input class="search" type="text" placeholder="Search documents..." id="search-input">
+        <button class="search-clear" id="search-clear" style="display:none;">&times;</button>
+      </div>
       <div class="topbar-nav">
         <span class="topbar-btn act" data-view="documents">Documents</span>
         <span class="topbar-btn" data-view="recent">Recent</span>
@@ -24,6 +27,7 @@
           <div class="sb-mode-btn act" data-mode="folders">Folders</div>
           <div class="sb-mode-btn" data-mode="tags">Tags</div>
         </div>
+        <div id="search-results" style="display:none;"></div>
         <div id="sidebar-tree"></div>
       </div>
 
