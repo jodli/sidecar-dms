@@ -314,29 +314,27 @@ body {
 .tag-p { background: #eeedfe; color: #3c3489; }
 .tag-a { background: #faeeda; color: #633806; }
 .tag-r { background: #fce8e8; color: #991b1b; }
+.tag-link { cursor: pointer; text-decoration: none; }
+.tag-link:hover { filter: brightness(0.92); }
 
 /* Divider */
 .dv { border-top: 1px solid var(--color-border-tertiary); margin: 10px 0; }
 
-/* Fields table */
-.fields-table {
-  width: 100%;
-  border-collapse: collapse;
+/* Fields */
+.field-item {
+  display: flex;
+  flex-direction: column;
+  padding: 3px 0;
   font-size: 12px;
-  margin-top: 4px;
 }
-.fields-table td {
-  padding: 3px 6px;
-  border: 1px solid var(--color-border-tertiary);
+.field-item + .field-item {
+  border-top: 1px solid var(--color-border-tertiary);
 }
-.fields-table-key {
+.field-key {
   color: var(--color-text-tertiary);
-  white-space: nowrap;
-  width: 1%;
 }
-.fields-table-val {
+.field-val {
   color: var(--color-text-primary);
-  font-family: var(--font-mono);
   word-break: break-word;
 }
 

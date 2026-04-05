@@ -193,22 +193,19 @@ function renderMetadataPanel(meta, path) {
 
   // Assign colors to tags by cycling through palette
   const tagHTML = (meta.tags || []).map((tag, i) =>
-    `<span class="tag ${TAG_COLORS[i % TAG_COLORS.length]}">${esc(tag)}</span>`
+    `<a class="tag tag-link ${TAG_COLORS[i % TAG_COLORS.length]}" data-tag="${esc(tag)}">${esc(tag)}</a>`
   ).join('');
 
   const fieldEntries = meta.fields ? Object.entries(meta.fields) : [];
   const fieldsHTML = fieldEntries.length > 0
-    ? `<table class="fields-table">
-        <tbody>${fieldEntries.map(([k, v]) =>
-          `<tr><td class="fields-table-key">${esc(k)}</td><td class="fields-table-val">${esc(String(v))}</td></tr>`
-        ).join('')}</tbody>
-      </table>`
+    ? fieldEntries.map(([k, v]) =>
+        `<div class="field-item"><span class="field-key">${esc(k)}</span><span class="field-val">${esc(String(v))}</span></div>`
+      ).join('')
     : '';
 
   const proc = meta.processing || {};
   const ocrDot = proc.ocr_engine ? 'dot-g' : 'dot-r';
   const classifierDot = proc.classifier && proc.classifier !== 'manual' ? 'dot-g' : 'dot-o';
-  const textLayerDot = proc.text_layer_embedded ? 'dot-g' : 'dot-o';
 
   panel.innerHTML = `
     <div class="ml">Titel</div>
@@ -217,8 +214,8 @@ function renderMetadataPanel(meta, path) {
     <div class="ml">Datum</div>
     <div class="mv m">${esc(String(meta.date || ''))}</div>
 
-    <div class="ml">Typ</div>
-    <div><span class="tag ${TYPE_COLOR}">${esc(meta.document_type || '')}</span></div>
+    <div class="ml">Art</div>
+    <div><span class="tag ${TYPE_COLOR}">${esc(meta.kind || '')}</span></div>
 
     <div class="ml">Absender</div>
     <div class="mv">${esc(meta.sender || '—')}</div>
@@ -236,20 +233,10 @@ function renderMetadataPanel(meta, path) {
 
     <div class="dv"></div>
 
-    <div class="ml">Dateien</div>
-    <div style="display:flex;flex-direction:column;gap:2px;margin-top:2px;">
-      <div class="frow"><span class="dot dot-g"></span> ${esc(baseName)}.pdf</div>
-      <div class="frow"><span class="dot dot-g"></span> ${esc(baseName)}.md</div>
-      <div class="frow"><span class="dot dot-g"></span> ${esc(baseName)}.meta.yml</div>
-    </div>
-
-    <div class="dv"></div>
-
     <div class="ml">Verarbeitung</div>
     <div style="display:flex;flex-direction:column;gap:2px;margin-top:2px;">
       <div class="frow"><span class="dot ${ocrDot}"></span> ${esc(proc.ocr_engine || 'unbekannt')}</div>
       <div class="frow"><span class="dot ${classifierDot}"></span> ${esc(proc.classifier || 'unbekannt')}</div>
-      <div class="frow"><span class="dot ${textLayerDot}"></span> ${proc.text_layer_embedded ? 'Textebene eingebettet' : 'Keine Textebene im PDF'}</div>
     </div>
   `;
 }
@@ -433,6 +420,26 @@ function setupEventListeners() {
   }
 
   searchClear.addEventListener('click', clearSearch);
+
+  // Tag clicks in metadata panel → switch to tag view and scroll to tag
+  document.getElementById('meta-panel').addEventListener('click', (e) => {
+    const tagLink = e.target.closest('.tag-link');
+    if (!tagLink) return;
+    e.preventDefault();
+    const tag = tagLink.dataset.tag;
+    if (sidebarMode !== 'tags') {
+      sidebarMode = 'tags';
+      document.querySelectorAll('.sb-mode-btn').forEach(b =>
+        b.classList.toggle('act', b.dataset.mode === 'tags')
+      );
+    }
+    clearSearch();
+    buildSidebarTree();
+    const tagLabel = document.querySelector(`.tree-tag-label[data-tag="${CSS.escape(tag)}"]`);
+    if (tagLabel) {
+      tagLabel.scrollIntoView({ block: 'nearest' });
+    }
+  });
 
   searchInput.addEventListener('input', async (e) => {
     const query = e.target.value.trim();
