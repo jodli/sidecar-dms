@@ -340,11 +340,6 @@ async function showOCR(path) {
 
 function loadPdfJs() {
   return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.min.mjs';
-    script.type = 'module';
-
-    // pdf.js 4.x is an ES module — use a different loading strategy
     const loader = document.createElement('script');
     loader.type = 'module';
     loader.textContent = `
