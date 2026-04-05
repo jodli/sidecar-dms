@@ -1,38 +1,37 @@
-#!/usr/bin/env python3
 """Build manifest-YYYY.json files from .meta.yml sidecars in the archive."""
 
 import json
-import os
 from collections import defaultdict
-from pathlib import Path
 
 import yaml
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-DATA_DIR = Path(os.environ.get("SIDECAR_DATA_DIR", REPO_ROOT.parent / "sidecar-data"))
-ARCHIVE_DIR = DATA_DIR / "archive"
+from config import DATA_DIR, ARCHIVE_DIR, get_logger
+
+log = get_logger("manifest")
 
 
 def main():
-    print(f"Archive: {ARCHIVE_DIR}")
-
     entries_by_year: dict[str, list[dict]] = defaultdict(list)
 
     for meta_path in sorted(ARCHIVE_DIR.rglob("*.meta.yml")):
-        meta = yaml.safe_load(meta_path.read_text(encoding="utf-8"))
+        try:
+            meta = yaml.safe_load(meta_path.read_text(encoding="utf-8"))
+            if not meta or not isinstance(meta, dict):
+                raise ValueError("empty or invalid YAML")
+        except Exception:
+            log.warning("Skipping %s (invalid YAML)", meta_path.relative_to(ARCHIVE_DIR))
+            continue
 
-        # path relative to archive/, without .meta.yml extension
         rel = meta_path.relative_to(ARCHIVE_DIR)
         doc_path = str(rel).removesuffix(".meta.yml")
-
         year = str(rel.parts[0])
 
         entries_by_year[year].append(
             {
                 "path": doc_path,
-                "title": meta["title"],
-                "date": str(meta["date"]),
-                "type": meta["document_type"],
+                "title": meta.get("title", doc_path),
+                "date": str(meta.get("date", "")),
+                "type": meta.get("document_type", "unknown"),
                 "tags": meta.get("tags", []),
             }
         )
@@ -44,10 +43,7 @@ def main():
             json.dumps(entries, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
-        print(f"  {manifest_path.name}: {len(entries)} entries")
-
-    print()
-    print("Done.")
+        log.info("manifest-%s.json: %d entries", year, len(entries))
 
 
 if __name__ == "__main__":

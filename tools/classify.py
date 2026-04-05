@@ -1,12 +1,8 @@
-#!/usr/bin/env python3
 """Document classification: prompt, validation, and category mapping."""
 
 import json
-import os
 import re
 from datetime import datetime, timezone
-
-CLASSIFY_MODEL = os.environ.get("CLASSIFY_MODEL", "google/gemma-4-31b-it")
 
 SYSTEM_PROMPT = """Du bist ein Dokumenten-Klassifikator. Analysiere den folgenden OCR-Text und extrahiere strukturierte Metadaten.
 
@@ -47,27 +43,24 @@ def category_for(document_type: str) -> str:
 
 def validate_metadata(raw: dict) -> dict:
     """Validate and fill defaults for LLM-generated metadata."""
-    meta = {}
-
-    meta["title"] = raw.get("title", "Unbekanntes Dokument")
-    meta["document_type"] = raw.get("document_type", "unclassified")
-    meta["tags"] = raw.get("tags", [])
-    meta["sender"] = raw.get("sender", "")
-    meta["summary"] = raw.get("summary", "")
-    meta["fields"] = raw.get("fields", {})
+    meta = {
+        "title": raw.get("title", "Unbekanntes Dokument"),
+        "document_type": raw.get("document_type", "unclassified"),
+        "sender": raw.get("sender", ""),
+        "summary": raw.get("summary", ""),
+        "tags": raw.get("tags", []),
+        "fields": raw.get("fields", {}),
+    }
 
     # Validate date format
-    date_str = raw.get("date", "")
-    if re.match(r"^\d{4}-\d{2}-\d{2}$", str(date_str)):
-        meta["date"] = str(date_str)
+    date_str = str(raw.get("date", ""))
+    if re.match(r"^\d{4}-\d{2}-\d{2}$", date_str):
+        meta["date"] = date_str
     else:
         meta["date"] = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
-    # Ensure tags is a list
     if not isinstance(meta["tags"], list):
         meta["tags"] = [str(meta["tags"])]
-
-    # Ensure fields is a dict
     if not isinstance(meta["fields"], dict):
         meta["fields"] = {}
 
@@ -78,13 +71,13 @@ def parse_llm_response(text: str) -> dict | None:
     """Try to extract JSON from LLM response text. Returns None on failure."""
     text = text.strip()
 
-    # Try direct parse
+    # Direct parse
     try:
         return json.loads(text)
     except json.JSONDecodeError:
         pass
 
-    # Try extracting from markdown code block
+    # Markdown code block
     m = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", text, re.DOTALL)
     if m:
         try:
@@ -92,7 +85,7 @@ def parse_llm_response(text: str) -> dict | None:
         except json.JSONDecodeError:
             pass
 
-    # Try finding first { ... } block
+    # First { ... } block
     m = re.search(r"\{.*\}", text, re.DOTALL)
     if m:
         try:

@@ -1,19 +1,21 @@
-#!/usr/bin/env python3
 """OCR + classification via OpenRouter: mistral-ocr plugin + LLM in one request."""
 
 import base64
 import json
-import os
 import re
+import time
 from pathlib import Path
 
 import requests
 
-from classify import CLASSIFY_MODEL, SYSTEM_PROMPT, parse_llm_response, validate_metadata, stub_metadata
+from config import OPENROUTER_API_KEY, OPENROUTER_URL, OCR_ENGINE, CLASSIFY_MODEL, get_logger
+from classify import SYSTEM_PROMPT, parse_llm_response, validate_metadata, stub_metadata
 
-OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-OCR_ENGINE = os.environ.get("OCR_ENGINE", "mistral-ocr")
+log = get_logger("ocr")
+
+MAX_RETRIES = 2
+RETRY_BACKOFF = 2  # seconds, doubled each retry
+TRANSIENT_CODES = {429, 500, 502, 503, 504}
 
 
 def ocr_pdf(pdf_path: Path) -> tuple[str, dict]:
@@ -55,18 +57,7 @@ def ocr_pdf(pdf_path: Path) -> tuple[str, dict]:
         ],
     }
 
-    resp = requests.post(
-        OPENROUTER_URL,
-        headers={
-            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-            "Content-Type": "application/json",
-        },
-        json=payload,
-        timeout=180,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-
+    data = _request_with_retry(payload)
     message = data.get("choices", [{}])[0].get("message", {})
 
     # Extract OCR text from annotations
@@ -78,17 +69,53 @@ def ocr_pdf(pdf_path: Path) -> tuple[str, dict]:
     if raw:
         metadata = validate_metadata(raw)
     else:
-        print(f"  WARN  Classification failed, using stub. Response: {model_content[:200]}")
+        log.warning("Classification failed, using stub. Response: %s", model_content[:200])
         metadata = stub_metadata(pdf_path.stem)
 
     if not ocr_text:
-        # Fallback: use model content as OCR text if no annotations
         if model_content:
             ocr_text = model_content
         else:
-            raise RuntimeError(f"No OCR text in response: {json.dumps(data, indent=2)[:500]}")
+            raise RuntimeError("No OCR text in response")
 
     return ocr_text, metadata
+
+
+def _request_with_retry(payload: dict) -> dict:
+    """POST to OpenRouter with retry on transient failures."""
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    last_error = None
+    for attempt in range(1 + MAX_RETRIES):
+        try:
+            resp = requests.post(OPENROUTER_URL, headers=headers, json=payload, timeout=180)
+
+            if resp.status_code in TRANSIENT_CODES and attempt < MAX_RETRIES:
+                wait = RETRY_BACKOFF * (2 ** attempt)
+                log.warning("HTTP %d, retrying in %ds...", resp.status_code, wait)
+                time.sleep(wait)
+                continue
+
+            resp.raise_for_status()
+
+            try:
+                return resp.json()
+            except (json.JSONDecodeError, ValueError) as e:
+                raise RuntimeError(f"Invalid JSON response: {resp.text[:200]}") from e
+
+        except (requests.ConnectionError, requests.Timeout) as e:
+            last_error = e
+            if attempt < MAX_RETRIES:
+                wait = RETRY_BACKOFF * (2 ** attempt)
+                log.warning("Network error: %s. Retrying in %ds...", e, wait)
+                time.sleep(wait)
+                continue
+            raise RuntimeError(f"API unreachable after {MAX_RETRIES + 1} attempts") from e
+
+    raise last_error or RuntimeError("Request failed")
 
 
 def _extract_ocr_text(annotations: list) -> str:
@@ -99,7 +126,6 @@ def _extract_ocr_text(annotations: list) -> str:
             for part in ann.get("file", {}).get("content", []):
                 if part.get("type") == "text":
                     text = part["text"]
-                    # Strip <file> wrapper tags that cloudflare-ai adds
                     text = re.sub(r'^<file[^>]*>\s*', '', text)
                     text = re.sub(r'\s*</file>\s*$', '', text)
                     text = text.strip()
@@ -110,25 +136,13 @@ def _extract_ocr_text(annotations: list) -> str:
 
 if __name__ == "__main__":
     import sys
-
     if len(sys.argv) != 2:
         print(f"Usage: {sys.argv[0]} <pdf_path>")
         sys.exit(1)
-
     path = Path(sys.argv[1])
     if not path.exists():
         print(f"File not found: {path}")
         sys.exit(1)
-
-    # Load .env from repo root if present
-    env_file = Path(__file__).resolve().parent.parent / ".env"
-    if env_file.exists():
-        for line in env_file.read_text().splitlines():
-            if "=" in line and not line.startswith("#"):
-                k, v = line.split("=", 1)
-                os.environ.setdefault(k.strip(), v.strip())
-        globals()["OPENROUTER_API_KEY"] = os.environ.get("OPENROUTER_API_KEY", "")
-
     ocr_text, metadata = ocr_pdf(path)
     print("=== OCR TEXT ===")
     print(ocr_text[:500])
