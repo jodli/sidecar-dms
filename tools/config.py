@@ -21,7 +21,7 @@ if _env_file.exists():
 # API config
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
-OCR_ENGINE = os.environ.get("OCR_ENGINE", "cloudflare-ai")
+OCR_ENGINE = os.environ.get("OCR_ENGINE", "mistral-ocr")
 CLASSIFY_MODEL = os.environ.get("CLASSIFY_MODEL", "google/gemma-4-31b-it")
 
 

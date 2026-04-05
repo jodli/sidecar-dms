@@ -4,12 +4,11 @@ import os
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from urllib.parse import unquote
 
-from config import DATA_DIR, get_logger
+from config import REPO_ROOT, DATA_DIR, get_logger
 
 log = get_logger("server")
 
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC_DIR = os.path.join(REPO_ROOT, "src")
+SRC_DIR = str(REPO_ROOT / "src")
 DATA_ROOT = str(DATA_DIR)
 PORT = int(os.environ.get("PORT", "8000"))
 

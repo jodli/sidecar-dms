@@ -1,6 +1,4 @@
 # Data (lives outside the repo)
-/pdf/
-/md/
 *.pdf
 
 # Secrets

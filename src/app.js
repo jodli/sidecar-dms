@@ -33,25 +33,16 @@ async function init() {
 }
 
 async function discoverManifests() {
-  // Try common years — in a real app this could be a manifest index
-  const years = [];
-  const currentYear = new Date().getFullYear();
-  for (let y = currentYear; y >= currentYear - 10; y--) {
-    try {
-      const resp = await fetch(`manifest-${y}.json`, { method: 'HEAD' });
-      if (resp.ok) years.push(String(y));
-    } catch { /* skip */ }
+  try {
+    const resp = await fetch('manifest-index.json');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const years = await resp.json();
+    if (Array.isArray(years) && years.length > 0) return years;
+  } catch (err) {
+    console.warn('Failed to load manifest-index.json:', err);
   }
-  // Also try older years for certificates
-  for (const y of ['1990', '1991', '1992', '2000', '2010', '2015', '2018', '2019']) {
-    if (!years.includes(y)) {
-      try {
-        const resp = await fetch(`manifest-${y}.json`, { method: 'HEAD' });
-        if (resp.ok) years.push(y);
-      } catch { /* skip */ }
-    }
-  }
-  return years.length > 0 ? years : [String(currentYear)];
+  // Fallback: try current year
+  return [String(new Date().getFullYear())];
 }
 
 // ── Sidebar ──

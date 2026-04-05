@@ -13,6 +13,10 @@ OUTPUT_DIR = DATA_DIR / "pagefind"
 
 
 async def build():
+    if not ARCHIVE_DIR.exists():
+        log.warning("Archive directory does not exist: %s", ARCHIVE_DIR)
+        return
+
     config = IndexConfig(
         output_path=str(OUTPUT_DIR),
         force_language="de",

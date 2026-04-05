@@ -11,6 +11,10 @@ log = get_logger("manifest")
 
 
 def main():
+    if not ARCHIVE_DIR.exists():
+        log.warning("Archive directory does not exist: %s", ARCHIVE_DIR)
+        return
+
     entries_by_year: dict[str, list[dict]] = defaultdict(list)
 
     for meta_path in sorted(ARCHIVE_DIR.rglob("*.meta.yml")):
@@ -36,6 +40,7 @@ def main():
             }
         )
 
+    years = []
     for year, entries in sorted(entries_by_year.items()):
         entries.sort(key=lambda e: e["date"], reverse=True)
         manifest_path = DATA_DIR / f"manifest-{year}.json"
@@ -43,7 +48,15 @@ def main():
             json.dumps(entries, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
+        years.append(year)
         log.info("manifest-%s.json: %d entries", year, len(entries))
+
+    # Write index of available years so the SPA doesn't have to guess
+    index_path = DATA_DIR / "manifest-index.json"
+    index_path.write_text(
+        json.dumps(sorted(years, reverse=True), ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
 
 
 if __name__ == "__main__":
