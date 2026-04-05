@@ -9,33 +9,43 @@ import yaml
 
 from config import DATA_DIR, ARCHIVE_DIR, OCR_ENGINE, CLASSIFY_MODEL, get_logger
 from ocr import ocr_pdf
-from classify import category_for
 import build_manifest
 import build_search_index
 
 log = get_logger("process")
 
 
+def _unique_stem(target_dir: Path, stem: str) -> str:
+    """Return stem, or stem_2, stem_3, ... if stem already exists in target_dir."""
+    if not (target_dir / f"{stem}.meta.yml").exists():
+        return stem
+    counter = 2
+    while (target_dir / f"{stem}_{counter}.meta.yml").exists():
+        counter += 1
+    log.warning("Namenskollision: %s existiert bereits, verwende %s_%d", stem, stem, counter)
+    return f"{stem}_{counter}"
+
+
 def process(pdf_path: Path) -> Path:
     """Process a single PDF and return the archive path."""
-    name = pdf_path.stem
     now = datetime.now(timezone.utc)
 
     # OCR + classify
     log.info("OCR + classify %s", pdf_path.name)
     ocr_text, meta = ocr_pdf(pdf_path)
 
-    # Year from document date, not processing date
-    year = str(meta.get("date", ""))[:4]
-    if not year.isdigit():
-        year = str(now.year)
+    # Year from document date
+    year = meta["date"][:4]
 
-    # Determine category
-    category = category_for(meta["document_type"])
+    # Category from LLM classification
+    category = meta["category"]
     target_dir = ARCHIVE_DIR / year / category
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    log.info("  → %s/%s (%s)", year, category, meta["document_type"])
+    # Deduplicate filename
+    name = _unique_stem(target_dir, pdf_path.stem)
+
+    log.info("  → %s/%s (%s)", year, category, meta["kind"])
 
     # Write .md
     md_path = target_dir / f"{name}.md"
@@ -46,7 +56,6 @@ def process(pdf_path: Path) -> Path:
         "ocr_engine": OCR_ENGINE,
         "classifier": CLASSIFY_MODEL,
         "processed_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "text_layer_embedded": False,
     }
 
     # Write .meta.yml
@@ -57,7 +66,7 @@ def process(pdf_path: Path) -> Path:
     )
 
     # Move PDF to archive
-    pdf_dst = target_dir / pdf_path.name
+    pdf_dst = target_dir / f"{name}.pdf"
     shutil.move(str(pdf_path), str(pdf_dst))
 
     log.info("  → %s", pdf_dst.relative_to(DATA_DIR))
