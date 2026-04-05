@@ -9,7 +9,7 @@ from pathlib import Path
 import requests
 
 from config import OPENROUTER_API_KEY, OPENROUTER_URL, OCR_ENGINE, CLASSIFY_MODEL, get_logger
-from classify import SYSTEM_PROMPT, parse_llm_response, validate_metadata, stub_metadata
+from classify import SYSTEM_PROMPT, ClassificationError, parse_llm_response, validate_metadata
 
 log = get_logger("ocr")
 
@@ -62,21 +62,17 @@ def ocr_pdf(pdf_path: Path) -> tuple[str, dict]:
 
     # Extract OCR text from annotations
     ocr_text = _extract_ocr_text(message.get("annotations", []))
+    if not ocr_text:
+        raise RuntimeError("Kein OCR-Text in API-Antwort (Annotations leer)")
 
     # Extract classification from model response
     model_content = message.get("content", "")
     raw = parse_llm_response(model_content)
-    if raw:
-        metadata = validate_metadata(raw)
-    else:
-        log.warning("Classification failed, using stub. Response: %s", model_content[:200])
-        metadata = stub_metadata(pdf_path.stem)
-
-    if not ocr_text:
-        if model_content:
-            ocr_text = model_content
-        else:
-            raise RuntimeError("No OCR text in response")
+    if not raw:
+        raise ClassificationError(
+            f"Klassifikation fehlgeschlagen — kein JSON in Antwort: {model_content[:200]}"
+        )
+    metadata = validate_metadata(raw)
 
     return ocr_text, metadata
 
