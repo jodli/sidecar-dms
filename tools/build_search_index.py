@@ -48,7 +48,7 @@ async def build():
 
             meta_text = " ".join(filter(None, [
                 meta.get("title", ""),
-                meta.get("document_type", ""),
+                meta.get("kind", ""),
                 meta.get("sender", ""),
                 meta.get("summary", ""),
                 " ".join(meta.get("tags", [])),
@@ -63,7 +63,8 @@ async def build():
                 meta={"title": meta.get("title", rel_path)},
                 filters={
                     "tags": meta.get("tags", []),
-                    "document_type": [meta.get("document_type", "unknown")],
+                    "kind": [meta.get("kind", "unknown")],
+                    "category": [meta.get("category", "Sonstiges")],
                 },
             )
             count += 1

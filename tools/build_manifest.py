@@ -35,7 +35,8 @@ def main():
                 "path": doc_path,
                 "title": meta.get("title", doc_path),
                 "date": str(meta.get("date", "")),
-                "type": meta.get("document_type", "unknown"),
+                "kind": meta.get("kind", "unknown"),
+                "category": meta.get("category", "Sonstiges"),
                 "tags": meta.get("tags", []),
             }
         )
