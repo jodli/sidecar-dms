@@ -1,5 +1,6 @@
 """Watch intake folder for new PDFs and process them automatically."""
 
+import signal
 import time
 from pathlib import Path
 
@@ -14,74 +15,85 @@ SETTLE_INTERVAL = 1 # seconds between settle checks
 RETRY_AFTER = 300   # seconds before retrying a failed file
 BATCH_WAIT = 3      # extra seconds to wait after a batch for more files
 
+_running = True
+
+
+def _handle_signal(signum, frame):
+    global _running
+    log.info("Signal %d received, finishing current batch...", signum)
+    _running = False
+
 
 def watch():
+    global _running
+    signal.signal(signal.SIGTERM, _handle_signal)
+    signal.signal(signal.SIGINT, _handle_signal)
+
     INTAKE_DIR.mkdir(parents=True, exist_ok=True)
     log.info("Watching %s (poll %ds, settle %d×%ds)", INTAKE_DIR, POLL_INTERVAL, SETTLE_POLLS, SETTLE_INTERVAL)
 
-    failed: dict[str, float] = {}  # filename → timestamp of last failure
+    failed: dict[str, float] = {}
 
-    while True:
-        try:
-            batch = _collect_batch(failed)
+    while _running:
+        batch = collect_batch(INTAKE_DIR, failed)
 
-            if batch:
-                log.info("Batch: %d PDFs", len(batch))
-                processed = 0
-                for i, pdf in enumerate(batch, 1):
-                    try:
-                        result = process(pdf)
-                        processed += 1
-                        rel = result.relative_to(DATA_DIR) if DATA_DIR in result.parents else result
-                        log.info("[%d/%d] %s → %s", i, len(batch), pdf.name, rel)
-                    except Exception:
-                        log.exception("[%d/%d] FEHLER %s", i, len(batch), pdf.name)
-                        failed[pdf.name] = time.time()
+        if batch:
+            log.info("Batch: %d PDFs", len(batch))
+            processed = 0
+            for i, pdf in enumerate(batch, 1):
+                if not _running:
+                    break
+                try:
+                    result = process(pdf)
+                    processed += 1
+                    rel = result.relative_to(DATA_DIR) if DATA_DIR in result.parents else result
+                    log.info("[%d/%d] %s → %s", i, len(batch), pdf.name, rel)
+                except Exception:
+                    log.exception("[%d/%d] FEHLER %s", i, len(batch), pdf.name)
+                    failed[pdf.name] = time.time()
 
-                if processed:
-                    # Wait briefly for more files (bulk copy detection)
-                    time.sleep(BATCH_WAIT)
-                    extra = _collect_batch(failed)
-                    if extra:
-                        log.info("Weitere %d PDFs gefunden, verarbeite...", len(extra))
-                        for i, pdf in enumerate(extra, 1):
-                            try:
-                                result = process(pdf)
-                                processed += 1
-                                rel = result.relative_to(DATA_DIR) if DATA_DIR in result.parents else result
-                                log.info("[%d/%d] %s → %s", i, len(extra), pdf.name, rel)
-                            except Exception:
-                                log.exception("[%d/%d] FEHLER %s", i, len(extra), pdf.name)
-                                failed[pdf.name] = time.time()
+            if processed and _running:
+                time.sleep(BATCH_WAIT)
+                extra = collect_batch(INTAKE_DIR, failed)
+                if extra:
+                    log.info("Weitere %d PDFs gefunden, verarbeite...", len(extra))
+                    for i, pdf in enumerate(extra, 1):
+                        if not _running:
+                            break
+                        try:
+                            result = process(pdf)
+                            processed += 1
+                            rel = result.relative_to(DATA_DIR) if DATA_DIR in result.parents else result
+                            log.info("[%d/%d] %s → %s", i, len(extra), pdf.name, rel)
+                        except Exception:
+                            log.exception("[%d/%d] FEHLER %s", i, len(extra), pdf.name)
+                            failed[pdf.name] = time.time()
 
-                    rebuild()
-                    log.info("Batch fertig: %d verarbeitet", processed)
+                rebuild()
+                log.info("Batch fertig: %d verarbeitet", processed)
 
-        except KeyboardInterrupt:
-            log.info("Stopped.")
-            break
-        except Exception:
-            log.exception("Watch loop error")
+        if _running:
+            time.sleep(POLL_INTERVAL)
 
-        time.sleep(POLL_INTERVAL)
+    log.info("Stopped.")
 
 
-def _collect_batch(failed: dict[str, float]) -> list[Path]:
+def collect_batch(intake_dir: Path, failed: dict[str, float]) -> list[Path]:
     """Collect all settled, non-failed PDFs from intake."""
     now = time.time()
     batch = []
-    for pdf in sorted(INTAKE_DIR.glob("*.pdf")):
+    for pdf in sorted(intake_dir.glob("*.pdf")):
         if pdf.name in failed and now - failed[pdf.name] < RETRY_AFTER:
             continue
         if pdf.name in failed:
             log.info("Retry: %s", pdf.name)
             del failed[pdf.name]
-        if _is_settled(pdf):
+        if is_settled(pdf):
             batch.append(pdf)
     return batch
 
 
-def _is_settled(pdf: Path) -> bool:
+def is_settled(pdf: Path) -> bool:
     """Check if file size is stable across multiple polls."""
     try:
         sizes = []
