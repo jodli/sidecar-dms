@@ -13,6 +13,7 @@
 __pycache__/
 *.pyc
 .venv/
+.pytest_cache/
 
 # Mockup (not committed)
 sidecar_dms_ui_mockup*.html

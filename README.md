@@ -10,7 +10,7 @@ Drop a PDF into the intake folder. The pipeline OCRs it (Mistral OCR), classifie
 archive/2024/Rechnungen/
   hornbach-rechnung.pdf          <- original, untouched
   hornbach-rechnung.md           <- OCR text as Markdown
-  hornbach-rechnung.meta.yml     <- title, date, type, tags, sender, summary, fields
+  hornbach-rechnung.meta.yml     <- title, date, kind, category, tags, sender, summary, fields
 ```
 
 OCR and classification happen in a single API call via OpenRouter. One API key for everything.
@@ -19,17 +19,18 @@ OCR and classification happen in a single API call via OpenRouter. One API key f
 
 - **SPA** (`src/`) — Three-panel browser: sidebar tree, PDF viewer (pdf.js), OCR text (marked.js), metadata panel. Pagefind full-text search. No framework, no build step.
 - **Pipeline** (`tools/`) — `process_pdf.py` does OCR + classify + archive + rebuild. `watch_intake.py` polls for new PDFs. `build_manifest.py` and `build_search_index.py` regenerate the data layer.
+- **Web** — Caddy serves the SPA and archive data. Auto-HTTPS, gzip, SPA-Fallback.
 
 ## Setup
 
 ```bash
-# Clone and install
 git clone <repo>
 cd sidecar-dms
 uv venv && uv pip install -r requirements.txt
 
-# API key
-echo "OPENROUTER_API_KEY=sk-or-v1-..." > .env
+# API key + config
+cp .env.example .env
+# Edit .env: set OPENROUTER_API_KEY and SIDECAR_DATA_DIR
 
 # Create data directory
 mkdir -p /path/to/sidecar-data/intake
@@ -42,13 +43,13 @@ Source code lives in the git repo. Data (PDFs, archive, manifests, search index)
 ### Process a single PDF
 
 ```bash
-SIDECAR_DATA_DIR=/path/to/sidecar-data uv run python tools/process_pdf.py /path/to/document.pdf
+SIDECAR_DATA_DIR=/path/to/data uv run python tools/process_pdf.py /path/to/document.pdf
 ```
 
 ### Watch intake folder
 
 ```bash
-SIDECAR_DATA_DIR=/path/to/sidecar-data uv run python tools/watch_intake.py
+SIDECAR_DATA_DIR=/path/to/data uv run python tools/watch_intake.py
 ```
 
 Drop PDFs into `$SIDECAR_DATA_DIR/intake/`. They get processed automatically.
@@ -56,20 +57,80 @@ Drop PDFs into `$SIDECAR_DATA_DIR/intake/`. They get processed automatically.
 ### Start the web UI
 
 ```bash
-SIDECAR_DATA_DIR=/path/to/sidecar-data \
-  uv run python tools/dev_server.py
+# Install Caddy: https://caddyserver.com/docs/install
+SIDECAR_DATA_DIR=/path/to/data caddy run --config Caddyfile
 ```
 
-Open `http://localhost:8000`.
+Open `https://localhost` (or `http://localhost` without domain).
+
+For production with a domain and auto-HTTPS:
+
+```bash
+SIDECAR_DOMAIN=dms.example.com \
+SIDECAR_DATA_DIR=/srv/sidecar-data \
+SIDECAR_SRC_DIR=/opt/sidecar-dms/src \
+  caddy run --config Caddyfile
+```
 
 ### Rebuild manifests and search index
 
 ```bash
-SIDECAR_DATA_DIR=/path/to/sidecar-data uv run python tools/build_manifest.py
-SIDECAR_DATA_DIR=/path/to/sidecar-data uv run python tools/build_search_index.py
+SIDECAR_DATA_DIR=/path/to/data uv run python tools/build_manifest.py
+SIDECAR_DATA_DIR=/path/to/data uv run python tools/build_search_index.py
 ```
 
 This happens automatically after `process_pdf.py`, but you can run it manually after editing `.meta.yml` files by hand.
+
+### Run tests
+
+```bash
+uv pip install -r requirements-dev.txt
+uv run pytest tests/ -v
+```
+
+## Production deployment
+
+### 1. Install dependencies
+
+```bash
+# On the server
+git clone <repo> /opt/sidecar-dms
+cd /opt/sidecar-dms
+uv venv && uv pip install -r requirements.txt
+
+cp .env.example .env
+# Edit .env
+```
+
+### 2. Caddy (web server)
+
+Install Caddy via package manager or download: https://caddyserver.com/docs/install
+
+Caddy handles HTTPS automatically (Let's Encrypt) when `SIDECAR_DOMAIN` is set to a real domain.
+
+```bash
+# Systemd: Caddy usually comes with its own unit.
+# Set environment in /etc/caddy/environment or override the unit.
+```
+
+### 3. Watch intake (systemd)
+
+```bash
+sudo cp deploy/sidecar-watch.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now sidecar-watch
+```
+
+Logs: `journalctl -u sidecar-watch -f`
+
+The service handles SIGTERM gracefully — it finishes the current batch before stopping.
+
+### 4. Health check
+
+```
+curl https://dms.example.com/health
+# → OK
+```
 
 ## Environment variables
 
@@ -79,7 +140,10 @@ This happens automatically after `process_pdf.py`, but you can run it manually a
 | `OPENROUTER_API_KEY` | OpenRouter API key (or put it in `.env`) | required |
 | `OCR_ENGINE` | LLM for optical character recognition | `mistral-ocr` |
 | `CLASSIFY_MODEL` | LLM for classification | `google/gemma-4-31b-it` |
-| `PORT` | Dev server port | `8000` |
+| `OPENROUTER_URL` | API endpoint | `https://openrouter.ai/api/v1/chat/completions` |
+| `LOG_LEVEL` | Logging level (DEBUG, INFO, WARNING, ERROR) | `INFO` |
+| `SIDECAR_DOMAIN` | Caddy: domain for auto-HTTPS | `localhost` |
+| `SIDECAR_SRC_DIR` | Caddy: path to `src/` directory | `./src` |
 
 ## Architecture
 
