@@ -1,5 +1,5 @@
 {$SIDECAR_DOMAIN:localhost} {
-	root * {$SIDECAR_SRC_DIR:./src}
+	encode gzip
 
 	handle /health {
 		respond "OK" 200
@@ -21,7 +21,9 @@
 		file_server
 	}
 
-	file_server
-	try_files {path} /index.html
-	encode gzip
+	handle {
+		root * {$SIDECAR_SRC_DIR:./src}
+		try_files {path} /index.html
+		file_server
+	}
 }
