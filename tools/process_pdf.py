@@ -15,7 +15,7 @@ import build_search_index
 log = get_logger("process")
 
 
-def _unique_stem(target_dir: Path, stem: str) -> str:
+def unique_stem(target_dir: Path, stem: str) -> str:
     """Return stem, or stem_2, stem_3, ... if stem already exists in target_dir."""
     if not (target_dir / f"{stem}.meta.yml").exists():
         return stem
@@ -26,7 +26,7 @@ def _unique_stem(target_dir: Path, stem: str) -> str:
     return f"{stem}_{counter}"
 
 
-def process(pdf_path: Path) -> Path:
+def process(pdf_path: Path, archive_dir: Path = ARCHIVE_DIR) -> Path:
     """Process a single PDF and return the archive path."""
     now = datetime.now(timezone.utc)
 
@@ -39,11 +39,11 @@ def process(pdf_path: Path) -> Path:
 
     # Category from LLM classification
     category = meta["category"]
-    target_dir = ARCHIVE_DIR / year / category
+    target_dir = archive_dir / year / category
     target_dir.mkdir(parents=True, exist_ok=True)
 
     # Deduplicate filename
-    name = _unique_stem(target_dir, pdf_path.stem)
+    name = unique_stem(target_dir, pdf_path.stem)
 
     log.info("  → %s/%s (%s)", year, category, meta["kind"])
 
@@ -69,7 +69,7 @@ def process(pdf_path: Path) -> Path:
     pdf_dst = target_dir / f"{name}.pdf"
     shutil.move(str(pdf_path), str(pdf_dst))
 
-    log.info("  → %s", pdf_dst.relative_to(DATA_DIR))
+    log.info("  → %s", pdf_dst.relative_to(archive_dir.parent))
     return pdf_dst
 
 
