@@ -3,7 +3,6 @@
 import json
 
 import yaml
-import pytest
 
 from build_manifest import collect_entries, write_manifests
 

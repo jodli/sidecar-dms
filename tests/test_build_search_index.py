@@ -1,7 +1,6 @@
 """Tests for build_search_index.py: document collection for search indexing."""
 
 import yaml
-import pytest
 
 from build_search_index import collect_documents
 
