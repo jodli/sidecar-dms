@@ -4,11 +4,10 @@ After=network.target
 
 [Service]
 Type=simple
-User=sidecar
-Group=sidecar
-WorkingDirectory=/opt/sidecar-dms
-EnvironmentFile=/opt/sidecar-dms/.env
-ExecStart=/opt/sidecar-dms/.venv/bin/python tools/watch_intake.py
+User=jodli
+WorkingDirectory=/mnt/quickstuff/git/sidecar-dms
+EnvironmentFile=/mnt/quickstuff/git/sidecar-dms/.env
+ExecStart=/mnt/quickstuff/git/sidecar-dms/.venv/bin/python tools/watch_intake.py
 Restart=on-failure
 RestartSec=10
 
