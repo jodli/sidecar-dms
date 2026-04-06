@@ -1,0 +1,20 @@
+[Unit]
+Description=Sidecar DMS - Watch intake folder for new PDFs
+After=network.target
+
+[Service]
+Type=simple
+User=sidecar
+Group=sidecar
+WorkingDirectory=/opt/sidecar-dms
+EnvironmentFile=/opt/sidecar-dms/.env
+ExecStart=/opt/sidecar-dms/.venv/bin/python tools/watch_intake.py
+Restart=on-failure
+RestartSec=10
+
+# Graceful shutdown: SIGTERM → finish current batch
+KillSignal=SIGTERM
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

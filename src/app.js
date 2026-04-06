@@ -321,8 +321,8 @@ function loadPdfJs() {
     const loader = document.createElement('script');
     loader.type = 'module';
     loader.textContent = `
-      import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.min.mjs';
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4/build/pdf.worker.min.mjs';
+      import * as pdfjsLib from '/vendor/pdf.min.mjs';
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min.mjs';
       window.pdfjsLib = pdfjsLib;
       window.dispatchEvent(new Event('pdfjs-ready'));
     `;
