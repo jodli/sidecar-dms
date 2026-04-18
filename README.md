@@ -86,6 +86,12 @@ docker compose logs -f
 
 Container runs as non-root (UID 1000), read-only root filesystem, all capabilities dropped. Mount `/data` volume for persistent storage. For TLS/auth, put a reverse proxy (Caddy, Traefik, HA Ingress, Cloudflare Tunnel) in front.
 
+## Deployment (Home Assistant Add-on)
+
+On Home Assistant OS / Supervised: add `https://github.com/jodli/sidecar-dms` under **Settings → Add-ons → Add-on Store → ⋮ → Repositories**, install **Sidecar DMS**, set `openrouter_api_key`, start. UI opens via the sidebar (Ingress).
+
+See [`ha-addon/sidecar-dms/DOCS.md`](ha-addon/sidecar-dms/DOCS.md) for options.
+
 ## Deployment (systemd)
 
 ```bash

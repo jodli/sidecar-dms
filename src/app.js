@@ -452,8 +452,9 @@ function setupEventListeners() {
 
     if (!pagefind) {
       try {
-        pagefind = await import('/pagefind/pagefind.js');
-        await pagefind.options({ bundlePath: '/pagefind/' });
+        const pagefindUrl = new URL('pagefind/pagefind.js', document.baseURI).href;
+        pagefind = await import(pagefindUrl);
+        await pagefind.options({ bundlePath: new URL('pagefind/', document.baseURI).href });
       } catch (err) {
         console.warn('Pagefind not available:', err);
         showSearchResults('<div class="search-no-results">Suchindex nicht verfügbar</div>');

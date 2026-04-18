@@ -28,6 +28,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+      - name: Verify tag matches addon version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          addon_version=$(awk '/^version:/ {gsub(/["'\'']/, "", $2); print $2; exit}' ha-addon/sidecar-dms/config.yaml)
+          if [ "$tag" != "$addon_version" ]; then
+            echo "::error::Git tag '$GITHUB_REF_NAME' (-> $tag) does not match addon version '$addon_version' in ha-addon/sidecar-dms/config.yaml"
+            exit 1
+          fi
+          echo "Tag $GITHUB_REF_NAME matches addon version $addon_version"
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
 

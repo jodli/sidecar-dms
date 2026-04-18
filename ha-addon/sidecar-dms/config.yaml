@@ -1,0 +1,31 @@
+name: Sidecar DMS
+version: "0.1.0"
+slug: sidecar_dms
+description: Lightweight document management sidecar with OCR + classification.
+url: "https://github.com/jodli/sidecar-dms"
+
+arch:
+  - amd64
+  - aarch64
+
+image: ghcr.io/jodli/sidecar-dms
+
+init: false
+
+ingress: true
+ingress_port: 8080
+panel_icon: mdi:file-document-multiple
+
+options:
+  openrouter_api_key: ""
+  openrouter_url: "https://openrouter.ai/api/v1/chat/completions"
+  ocr_engine: mistral-ocr
+  classify_model: google/gemma-4-31b-it
+  log_level: INFO
+
+schema:
+  openrouter_api_key: password
+  openrouter_url: url
+  ocr_engine: str
+  classify_model: str
+  log_level: list(DEBUG|INFO|WARNING|ERROR)

@@ -38,6 +38,30 @@ class SpaStaticFiles(StaticFiles):
             raise
 
 
+class IngressPathMiddleware:
+    """Honor the Home Assistant Ingress X-Ingress-Path header so URL generation
+    and StaticFiles serve relative to the ingress prefix instead of /."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] in ("http", "websocket"):
+            for name, value in scope.get("headers", ()):
+                if name == b"x-ingress-path" and value:
+                    prefix = value.decode("latin-1").rstrip("/")
+                    scope = dict(scope)
+                    scope["root_path"] = prefix
+                    path = scope.get("path", "")
+                    if path.startswith(prefix):
+                        scope["path"] = path[len(prefix):] or "/"
+                        raw = scope.get("raw_path") or path.encode("latin-1")
+                        if raw.startswith(prefix.encode("latin-1")):
+                            scope["raw_path"] = raw[len(prefix):] or b"/"
+                    break
+        await self.app(scope, receive, send)
+
+
 def create_app(data_dir: Path, src_dir: Path, start_watcher: bool = True) -> Starlette:
     """Build the ASGI app. Pure function — no global state."""
 
@@ -70,7 +94,10 @@ def create_app(data_dir: Path, src_dir: Path, start_watcher: bool = True) -> Sta
     # SPA: serve real files from src/, fall back to index.html for client-side routes
     routes.append(Mount("/", app=SpaStaticFiles(directory=src_dir, html=True)))
 
-    middleware = [Middleware(GZipMiddleware, minimum_size=1000)]
+    middleware = [
+        Middleware(IngressPathMiddleware),
+        Middleware(GZipMiddleware, minimum_size=1000),
+    ]
 
     @contextlib.asynccontextmanager
     async def lifespan(app: Starlette):

@@ -1,5 +1,6 @@
 """Shared configuration: paths, env loading, logging setup."""
 
+import json
 import logging
 import os
 from pathlib import Path
@@ -9,6 +10,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("SIDECAR_DATA_DIR", REPO_ROOT.parent / "sidecar-data"))
 ARCHIVE_DIR = DATA_DIR / "archive"
 INTAKE_DIR = DATA_DIR / "intake"
+
+# Home Assistant Supervisor writes user options here. Snake_case keys are
+# mapped to UPPER_CASE environment variables, matching our env-driven config.
+HA_OPTIONS_PATH = Path("/data/options.json")
 
 
 def load_dotenv(path: Path) -> dict[str, str]:
@@ -25,7 +30,23 @@ def load_dotenv(path: Path) -> dict[str, str]:
     return result
 
 
-# Load .env from repo root (once, at import time)
+def load_ha_options(path: Path) -> dict[str, str]:
+    """Read Home Assistant addon options. Returns empty dict if file missing."""
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return {k.upper(): str(v) for k, v in data.items() if v is not None and v != ""}
+
+
+# Source priority (first wins via setdefault):
+# 1. Process environment (e.g. docker-compose, shell)
+# 2. HA Supervisor options (/data/options.json) — only present in addon context
+# 3. .env at repo root (dev fallback)
+for _k, _v in load_ha_options(HA_OPTIONS_PATH).items():
+    os.environ.setdefault(_k, _v)
 for _k, _v in load_dotenv(REPO_ROOT / ".env").items():
     os.environ.setdefault(_k, _v)
 
