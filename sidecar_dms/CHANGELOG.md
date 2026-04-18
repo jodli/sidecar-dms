@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3
+
+- Also expose `archive/` at `/share/sidecar-dms/archive` so an existing
+  archive corpus can be imported by copying it there. Manifests and the
+  pagefind index are rebuilt automatically on next start.
+
 ## 0.1.2
 
 - Expose intake folder at `/share/sidecar-dms/intake` (visible via Samba /

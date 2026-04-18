@@ -13,9 +13,14 @@ for full-text search. UI is served via Ingress.
 | `classify_model`    | Classification model.                              |
 | `log_level`         | `DEBUG`, `INFO`, `WARNING`, `ERROR`.               |
 
-## Intake
+## Folders
 
-Drop PDFs into `/share/sidecar-dms/intake/` — reachable via the Samba share
-(`\\<ha-host>\share\sidecar-dms\intake\`) or the File Editor add-on. New
-files are picked up automatically. Processed PDFs land in `/data/archive`
-(internal to the add-on).
+Both folders live under `/share/sidecar-dms/`, reachable via the Samba
+share (`\\<ha-host>\share\sidecar-dms\`) or the File Editor add-on:
+
+- `intake/` — drop new PDFs here; they're OCR'd and classified, then moved
+  into `archive/`.
+- `archive/` — the processed corpus (`<year>/<category>/<name>.pdf` plus
+  sidecar `.md` and `.meta.yml`). To import an existing archive, copy it
+  here (preserving the directory layout) and restart the add-on; manifests
+  and the search index rebuild automatically.
