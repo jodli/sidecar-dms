@@ -15,7 +15,7 @@ for full-text search. UI is served via Ingress.
 
 ## Intake
 
-Place PDFs into the `intake/` subfolder of the add-on's data directory
-(reachable via the Samba or File Editor add-on). New files are picked up
-automatically.
-</content>
+Drop PDFs into `/share/sidecar-dms/intake/` — reachable via the Samba share
+(`\\<ha-host>\share\sidecar-dms\intake\`) or the File Editor add-on. New
+files are picked up automatically. Processed PDFs land in `/data/archive`
+(internal to the add-on).

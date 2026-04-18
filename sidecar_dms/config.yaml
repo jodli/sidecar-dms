@@ -1,5 +1,5 @@
 name: Sidecar DMS
-version: "0.1.1"
+version: "0.1.2"
 slug: sidecar_dms
 description: Lightweight document management sidecar with OCR + classification.
 url: "https://github.com/jodli/sidecar-dms"
@@ -11,6 +11,9 @@ arch:
 image: ghcr.io/jodli/sidecar-dms
 
 init: false
+
+map:
+  - share:rw
 
 ingress: true
 ingress_port: 8080

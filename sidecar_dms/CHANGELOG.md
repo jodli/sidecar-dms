@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+- Expose intake folder at `/share/sidecar-dms/intake` (visible via Samba /
+  File Editor). Existing intake files in `/data` are migrated automatically.
+
 ## 0.1.1
 
 - Fix `/data` permission denied: entrypoint chowns the volume and drops to
