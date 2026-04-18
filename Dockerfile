@@ -23,9 +23,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/install/lib/python3.13/site-packages \
     PATH=/install/bin:$PATH
 
-# ca-certificates for TLS to OpenRouter. Everything else: no.
+# ca-certificates: TLS to OpenRouter. gosu: drop privileges in entrypoint.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates \
+    && apt-get install -y --no-install-recommends ca-certificates gosu \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd -r -g 1000 sidecar \
     && useradd -r -u 1000 -g sidecar -d /app -s /usr/sbin/nologin sidecar \
@@ -35,8 +35,10 @@ RUN apt-get update \
 COPY --from=builder /install /install
 COPY --chown=sidecar:sidecar tools/ /app/tools/
 COPY --chown=sidecar:sidecar src/ /app/src/
+RUN chmod +x /app/tools/entrypoint.sh
 
-USER sidecar
+# No USER directive: entrypoint runs as root just long enough to fix /data
+# ownership (HA mounts it as root:root), then drops to sidecar via gosu.
 WORKDIR /app
 
 EXPOSE 8080
@@ -45,4 +47,4 @@ VOLUME ["/data"]
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/health',timeout=3).status==200 else 1)"
 
-CMD ["python", "tools/server.py"]
+ENTRYPOINT ["/app/tools/entrypoint.sh"]

@@ -3,6 +3,10 @@ services:
     build: .
     image: sidecar-dms:latest
     container_name: sidecar-dms
+    # Run as the sidecar user directly so the entrypoint skips its
+    # chown-then-gosu fallback (only needed in the HA add-on case where the
+    # Supervisor mounts /data as root). Host volume must be writable by 1000.
+    user: "1000:1000"
     ports:
       - "8080:8080"
     volumes:
