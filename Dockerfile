@@ -2,7 +2,7 @@
 
 # ---- Build stage ----
 # For reproducible builds, pin to a digest: python:3.13-slim@sha256:<digest>
-FROM python:3.13-slim AS builder
+FROM python:3.14-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -15,7 +15,7 @@ COPY requirements.txt .
 RUN pip install --prefix=/install -r requirements.txt
 
 # ---- Runtime stage ----
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
