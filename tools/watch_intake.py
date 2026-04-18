@@ -1,10 +1,10 @@
 """Watch intake folder for new PDFs and process them automatically."""
 
-import signal
+import asyncio
 import time
 from pathlib import Path
 
-from config import DATA_DIR, INTAKE_DIR, get_logger
+from config import INTAKE_DIR, get_logger
 from process_pdf import process, rebuild
 
 log = get_logger("watch")
@@ -13,69 +13,45 @@ POLL_INTERVAL = 2   # seconds
 SETTLE_POLLS = 3    # number of stable size checks before processing
 SETTLE_INTERVAL = 1 # seconds between settle checks
 RETRY_AFTER = 300   # seconds before retrying a failed file
-BATCH_WAIT = 3      # extra seconds to wait after a batch for more files
-
-_running = True
 
 
-def _handle_signal(signum, frame):
-    global _running
-    log.info("Signal %d received, finishing current batch...", signum)
-    _running = False
+async def watch_async(stop: asyncio.Event):
+    """Poll intake dir, process settled PDFs in batches until stop is set.
 
-
-def watch():
-    global _running
-    signal.signal(signal.SIGTERM, _handle_signal)
-    signal.signal(signal.SIGINT, _handle_signal)
-
+    Blocking I/O (glob, stat, time.sleep in is_settled, OCR in process)
+    runs via asyncio.to_thread() to keep the event loop responsive.
+    """
     INTAKE_DIR.mkdir(parents=True, exist_ok=True)
     log.info("Watching %s (poll %ds, settle %d×%ds)", INTAKE_DIR, POLL_INTERVAL, SETTLE_POLLS, SETTLE_INTERVAL)
 
     failed: dict[str, float] = {}
 
-    while _running:
-        batch = collect_batch(INTAKE_DIR, failed)
+    while not stop.is_set():
+        batch = await asyncio.to_thread(collect_batch, INTAKE_DIR, failed)
 
         if batch:
             log.info("Batch: %d PDFs", len(batch))
             processed = 0
             for i, pdf in enumerate(batch, 1):
-                if not _running:
+                if stop.is_set():
                     break
                 try:
-                    result = process(pdf)
+                    result = await asyncio.to_thread(process, pdf)
                     processed += 1
-                    rel = result.relative_to(DATA_DIR) if DATA_DIR in result.parents else result
-                    log.info("[%d/%d] %s → %s", i, len(batch), pdf.name, rel)
+                    log.info("[%d/%d] %s → %s", i, len(batch), pdf.name, result.name)
                 except Exception:
                     log.exception("[%d/%d] FEHLER %s", i, len(batch), pdf.name)
                     failed[pdf.name] = time.time()
 
-            if processed and _running:
-                time.sleep(BATCH_WAIT)
-                extra = collect_batch(INTAKE_DIR, failed)
-                if extra:
-                    log.info("Weitere %d PDFs gefunden, verarbeite...", len(extra))
-                    for i, pdf in enumerate(extra, 1):
-                        if not _running:
-                            break
-                        try:
-                            result = process(pdf)
-                            processed += 1
-                            rel = result.relative_to(DATA_DIR) if DATA_DIR in result.parents else result
-                            log.info("[%d/%d] %s → %s", i, len(extra), pdf.name, rel)
-                        except Exception:
-                            log.exception("[%d/%d] FEHLER %s", i, len(extra), pdf.name)
-                            failed[pdf.name] = time.time()
-
-                rebuild()
+            if processed:
+                await asyncio.to_thread(rebuild)
                 log.info("Batch fertig: %d verarbeitet", processed)
 
-        if _running:
-            time.sleep(POLL_INTERVAL)
-
-    log.info("Stopped.")
+        try:
+            await asyncio.wait_for(stop.wait(), timeout=POLL_INTERVAL)
+            return  # stop was set while waiting
+        except asyncio.TimeoutError:
+            continue  # next poll iteration
 
 
 def collect_batch(intake_dir: Path, failed: dict[str, float]) -> list[Path]:
@@ -106,16 +82,3 @@ def is_settled(pdf: Path) -> bool:
         return len(set(sizes)) == 1 and sizes[0] > 0
     except OSError:
         return False
-
-
-if __name__ == "__main__":
-    import build_manifest
-    import build_search_index
-
-    # Rebuild on startup
-    log.info("Rebuilding manifests...")
-    build_manifest.main()
-    log.info("Rebuilding search index...")
-    build_search_index.main()
-
-    watch()
