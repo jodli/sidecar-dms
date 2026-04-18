@@ -93,20 +93,25 @@ async def build_index(documents: list[dict], output_dir: Path) -> int:
     return count
 
 
-def main() -> int:
-    """Build search index. Returns 0 on success, 1 if any files were skipped."""
+async def main_async() -> int:
+    """Async variant callable from inside a running event loop (e.g. server lifespan)."""
     if not ARCHIVE_DIR.exists():
         log.warning("Archive directory does not exist: %s", ARCHIVE_DIR)
         return 1
 
     documents, errors = collect_documents(ARCHIVE_DIR)
-    count = asyncio.run(build_index(documents, OUTPUT_DIR))
+    count = await build_index(documents, OUTPUT_DIR)
     log.info("Indexed %d documents", count)
 
     if errors:
         log.warning("%d files skipped due to errors", errors)
         return 1
     return 0
+
+
+def main() -> int:
+    """Sync entry point for CLI usage."""
+    return asyncio.run(main_async())
 
 
 if __name__ == "__main__":
