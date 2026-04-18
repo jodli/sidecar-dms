@@ -1,5 +1,5 @@
 [Unit]
-Description=Sidecar DMS - Watch intake folder for new PDFs
+Description=Sidecar DMS - Unified backend (HTTP + intake watcher)
 After=network.target
 
 [Service]
@@ -7,11 +7,11 @@ Type=simple
 User=jodli
 WorkingDirectory=/mnt/quickstuff/git/sidecar-dms
 EnvironmentFile=/mnt/quickstuff/git/sidecar-dms/.env
-ExecStart=/mnt/quickstuff/git/sidecar-dms/.venv/bin/python tools/watch_intake.py
+ExecStart=/mnt/quickstuff/git/sidecar-dms/.venv/bin/python tools/server.py
 Restart=on-failure
 RestartSec=10
 
-# Graceful shutdown: SIGTERM → finish current batch
+# Graceful shutdown: uvicorn propagates SIGTERM, watcher task stops cleanly
 KillSignal=SIGTERM
 TimeoutStopSec=120
 
