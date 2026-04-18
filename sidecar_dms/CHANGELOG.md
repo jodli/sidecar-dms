@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.4
+
+- Fix PDF viewer under Ingress: pdf.js ESM imports now resolve relative to
+  `document.baseURI` instead of using absolute `/vendor/` paths.
+
 ## 0.1.3
 
 - Also expose `archive/` at `/share/sidecar-dms/archive` so an existing

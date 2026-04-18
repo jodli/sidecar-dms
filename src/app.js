@@ -318,11 +318,13 @@ async function showOCR(path) {
 
 function loadPdfJs() {
   return new Promise((resolve, reject) => {
+    const pdfJsUrl = new URL('vendor/pdf.min.mjs', document.baseURI).href;
+    const pdfWorkerUrl = new URL('vendor/pdf.worker.min.mjs', document.baseURI).href;
     const loader = document.createElement('script');
     loader.type = 'module';
     loader.textContent = `
-      import * as pdfjsLib from '/vendor/pdf.min.mjs';
-      pdfjsLib.GlobalWorkerOptions.workerSrc = '/vendor/pdf.worker.min.mjs';
+      import * as pdfjsLib from '${pdfJsUrl}';
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '${pdfWorkerUrl}';
       window.pdfjsLib = pdfjsLib;
       window.dispatchEvent(new Event('pdfjs-ready'));
     `;
