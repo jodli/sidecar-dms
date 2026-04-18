@@ -13,13 +13,20 @@ archive/2024/Rechnungen/
   hornbach-rechnung.meta.yml     <- title, date, kind, category, tags, sender, summary, fields
 ```
 
-OCR and classification happen in a single API call via OpenRouter. One API key for everything.
+OCR and classification happen in a single API call via OpenRouter.
 
-## What's in the box
+## Architecture
 
-- **SPA** (`src/`) — Three-panel browser: sidebar tree, PDF viewer (pdf.js), OCR text (marked.js), metadata panel. Pagefind full-text search. No framework, no build step.
-- **Pipeline** (`tools/`) — `process_pdf.py` does OCR + classify + archive + rebuild. `watch_intake.py` polls for new PDFs. `build_manifest.py` and `build_search_index.py` regenerate the data layer.
-- **Web** — Caddy serves the SPA and archive data. Auto-HTTPS, gzip, SPA-Fallback.
+A single process (`tools/server.py`) runs both:
+- **HTTP backend** (Starlette + uvicorn) — serves SPA, archive, pagefind index, manifests
+- **Intake watcher** (asyncio task in the same event loop) — polls `$SIDECAR_DATA_DIR/intake/`, OCRs + classifies new PDFs
+
+No database. Data lives on disk:
+1. **Manifests** — One `manifest-YYYY.json` per year, rebuilt from `.meta.yml` files. Drives the sidebar tree.
+2. **Pagefind** — Static WASM search index, rebuilt from `.md` + `.meta.yml`. Runs client-side.
+3. **On-demand fetch** — Click a document, the SPA fetches `.meta.yml` and `.md`/`.pdf` directly.
+
+Everything is a full rebuild. Always consistent, never out of sync.
 
 ## Setup
 
@@ -28,129 +35,72 @@ git clone <repo>
 cd sidecar-dms
 uv venv && uv pip install -r requirements.txt
 
-# API key + config
 cp .env.example .env
 # Edit .env: set OPENROUTER_API_KEY and SIDECAR_DATA_DIR
 
-# Create data directory
-mkdir -p /path/to/sidecar-data/intake
+mkdir -p "$SIDECAR_DATA_DIR/intake"
 ```
 
-Source code lives in the git repo. Data (PDFs, archive, manifests, search index) lives separately — set via `SIDECAR_DATA_DIR`.
+## Run
 
-## Usage
-
-### Process a single PDF
+### Server (HTTP + watcher, production)
 
 ```bash
-SIDECAR_DATA_DIR=/path/to/data uv run python tools/process_pdf.py /path/to/document.pdf
+SIDECAR_DATA_DIR=/path/to/data uv run python tools/server.py
 ```
 
-### Watch intake folder
+Opens on `http://localhost:8080`. For production, put a reverse proxy (Caddy, Traefik, HA Ingress, Cloudflare Tunnel) in front for TLS.
+
+### Individual pipeline scripts (optional)
 
 ```bash
-SIDECAR_DATA_DIR=/path/to/data uv run python tools/watch_intake.py
+# Process a single PDF manually
+uv run python tools/process_pdf.py /path/to/doc.pdf
+
+# Rebuild manifests or search index after hand-editing meta files
+uv run python tools/build_manifest.py
+uv run python tools/build_search_index.py
 ```
 
-Drop PDFs into `$SIDECAR_DATA_DIR/intake/`. They get processed automatically.
-
-### Start the web UI
-
-```bash
-# Install Caddy: https://caddyserver.com/docs/install
-SIDECAR_DATA_DIR=/path/to/data caddy run --config Caddyfile
-```
-
-Open `https://localhost` (or `http://localhost` without domain).
-
-For production with a domain and auto-HTTPS:
-
-```bash
-SIDECAR_DOMAIN=dms.example.com \
-SIDECAR_DATA_DIR=/srv/sidecar-data \
-SIDECAR_SRC_DIR=/opt/sidecar-dms/src \
-  caddy run --config Caddyfile
-```
-
-### Rebuild manifests and search index
-
-```bash
-SIDECAR_DATA_DIR=/path/to/data uv run python tools/build_manifest.py
-SIDECAR_DATA_DIR=/path/to/data uv run python tools/build_search_index.py
-```
-
-This happens automatically after `process_pdf.py`, but you can run it manually after editing `.meta.yml` files by hand.
-
-### Run tests
+### Tests
 
 ```bash
 uv pip install -r requirements-dev.txt
 uv run pytest tests/ -v
 ```
 
-## Production deployment
-
-### 1. Install dependencies
+## Deployment (systemd)
 
 ```bash
-# On the server
-git clone <repo> /opt/sidecar-dms
-cd /opt/sidecar-dms
+# On the target host, clone the repo and install deps
+git clone <repo> /path/to/sidecar-dms
+cd /path/to/sidecar-dms
 uv venv && uv pip install -r requirements.txt
+cp .env.example .env && vim .env   # set API key + data dir
 
-cp .env.example .env
-# Edit .env
-```
-
-### 2. Caddy (web server)
-
-Install Caddy via package manager or download: https://caddyserver.com/docs/install
-
-Caddy handles HTTPS automatically (Let's Encrypt) when `SIDECAR_DOMAIN` is set to a real domain.
-
-```bash
-# Systemd: Caddy usually comes with its own unit.
-# Set environment in /etc/caddy/environment or override the unit.
-```
-
-### 3. Watch intake (systemd)
-
-```bash
-sudo cp deploy/sidecar-watch.service /etc/systemd/system/
+# Install systemd unit (adjust paths in the file first)
+sudo cp deploy/sidecar.service /etc/systemd/system/
 sudo systemctl daemon-reload
-sudo systemctl enable --now sidecar-watch
+sudo systemctl enable --now sidecar
 ```
 
-Logs: `journalctl -u sidecar-watch -f`
+Logs: `journalctl -u sidecar -f`
 
-The service handles SIGTERM gracefully — it finishes the current batch before stopping.
-
-### 4. Health check
-
-```
-curl https://dms.example.com/health
-# → OK
-```
+The service handles SIGTERM gracefully — finishes the current batch before stopping.
 
 ## Environment variables
 
 | Variable | What | Default |
 |---|---|---|
-| `SIDECAR_DATA_DIR` | Where the archive, manifests, and search index live | `../sidecar-data` |
+| `SIDECAR_DATA_DIR` | Where archive, manifests, search index, and intake live | `../sidecar-data` |
 | `OPENROUTER_API_KEY` | OpenRouter API key (or put it in `.env`) | required |
-| `OCR_ENGINE` | LLM for optical character recognition | `mistral-ocr` |
-| `CLASSIFY_MODEL` | LLM for classification | `google/gemma-4-31b-it` |
+| `OCR_ENGINE` | OCR engine | `mistral-ocr` |
+| `CLASSIFY_MODEL` | Classification model | `google/gemma-4-31b-it` |
 | `OPENROUTER_URL` | API endpoint | `https://openrouter.ai/api/v1/chat/completions` |
-| `LOG_LEVEL` | Logging level (DEBUG, INFO, WARNING, ERROR) | `INFO` |
-| `SIDECAR_DOMAIN` | Caddy: domain for auto-HTTPS | `localhost` |
-| `SIDECAR_SRC_DIR` | Caddy: path to `src/` directory | `./src` |
+| `LOG_LEVEL` | `DEBUG`, `INFO`, `WARNING`, `ERROR` | `INFO` |
+| `HOST` | Server bind address | `0.0.0.0` |
+| `PORT` | Server port | `8080` |
 
-## Architecture
+## Frontend
 
-No database. Three mechanisms:
-
-1. **Manifests** — One `manifest-YYYY.json` per year, rebuilt from `.meta.yml` files. Drives the sidebar tree.
-2. **Pagefind** — Static WASM search index, rebuilt from `.md` + `.meta.yml`. Runs client-side.
-3. **On-demand fetch** — Click a document, the SPA fetches `.meta.yml` and `.md`/`.pdf` directly.
-
-Everything is a full rebuild. Always consistent, never out of sync. Fast enough at any realistic home archive scale.
+Three-panel SPA (`src/`): sidebar tree, PDF viewer (pdf.js), OCR text (marked.js), metadata panel. Pagefind full-text search. No framework, no build step. Vendored libs in `src/vendor/` — no CDN runtime dependencies.
