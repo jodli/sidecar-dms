@@ -69,6 +69,23 @@ uv pip install -r requirements-dev.txt
 uv run pytest tests/ -v
 ```
 
+## Deployment (Docker)
+
+```bash
+# Set API key
+cp .env.example .env && vim .env
+
+# Adjust volume path in docker-compose.yml to point to your data dir
+# (must be writable by UID 1000 — the non-root container user)
+sudo chown -R 1000:1000 /path/to/sidecar-data
+
+docker compose build
+docker compose up -d
+docker compose logs -f
+```
+
+Container runs as non-root (UID 1000), read-only root filesystem, all capabilities dropped. Mount `/data` volume for persistent storage. For TLS/auth, put a reverse proxy (Caddy, Traefik, HA Ingress, Cloudflare Tunnel) in front.
+
 ## Deployment (systemd)
 
 ```bash

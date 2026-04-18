@@ -1,0 +1,17 @@
+.venv/
+.git/
+.gitignore
+tests/
+*.pyc
+__pycache__/
+.pytest_cache/
+.env
+deploy/
+Caddyfile
+docker-compose.yml
+Dockerfile
+.dockerignore
+README.md
+requirements-dev.txt
+sidecar_dms_ui_mockup*.html
+sidecar-data/

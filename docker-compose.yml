@@ -1,0 +1,28 @@
+services:
+  sidecar-dms:
+    build: .
+    image: sidecar-dms:latest
+    container_name: sidecar-dms
+    ports:
+      - "8080:8080"
+    volumes:
+      # Adjust the host path to your data directory. Must be writable by UID 1000.
+      - /mnt/quickstuff/sidecar-data:/data
+    env_file:
+      - .env
+    environment:
+      - LOG_LEVEL=INFO
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/health',timeout=3).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
