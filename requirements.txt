@@ -2,4 +2,4 @@ requests
 pyyaml
 pagefind[bin]
 starlette>=0.40,<0.50
-uvicorn[standard]>=0.30,<0.40
+uvicorn[standard]>=0.30,<0.45
